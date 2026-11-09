@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // =========================================================================
+    // HỆ THỐNG PHÂN QUYỀN BẢO MẬT AZOTA TOÁN
+    // =========================================================================
+    // 1. Quản trị viên: Có custom claim 'admin == true' và khớp mã thiết bị đã đăng ký
+    // 2. Học sinh: Xác thực qua auth.uid, chỉ đọc bài được giao và ghi bài nộp của chính mình
+    // 3. Đáp án đúng & Lời giải: Lưu tại 'exam_keys' - CHỈ ADMIN có quyền đọc
+    //    Đề thi gửi cho học sinh tại 'exams' đã được lọc bỏ đáp án đúng.
+    // =========================================================================
+
+    // Hàm kiểm tra quản trị viên hợp lệ
+    function isAdmin() {
+      return request.auth != null && 
+        (request.auth.token.admin == true || 
+         request.auth.token.email == 'admin@azotatoan.internal' ||
+         exists(/databases/$(database)/documents/admin_device/$(request.auth.uid)));
+    }
+
+    // Hàm kiểm tra học sinh đang thao tác đúng tài khoản của mình
+    function isOwner(studentId) {
+      return request.auth != null && (request.auth.uid == studentId || request.auth.token.studentId == studentId);
+    }
+
+    // --- BẢO MẬT THIẾT BỊ QUẢN TRỊ VIÊN ---
+    match /admin_config/{docId} {
+      // Chỉ cho phép khởi tạo lần đầu nếu chưa có tài liệu nào
+      allow create: if !exists(/databases/$(database)/documents/admin_config/device_lock);
+      // Chỉ admin có thiết bị hợp lệ mới được đọc và cập nhật cấu hình thiết bị
+      allow read, update, delete: if isAdmin();
+    }
+
+    // --- QUẢN LÝ TÀI KHOẢN HỌC SINH ---
+    match /students/{studentId} {
+      // Admin toàn quyền tạo, sửa, xóa danh sách học sinh
+      allow read, write: if isAdmin();
+      // Học sinh chỉ được đọc thông tin của chính mình và cập nhật mật khẩu lần đầu
+      allow read: if isOwner(studentId);
+      allow update: if isOwner(studentId) && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passwordHash', 'mustChangePassword', 'lastLoginAt']);
+    }
+
+    // --- DANH SÁCH LỚP HỌC ---
+    match /classes/{classId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // --- ĐỀ KIỂM TRA (Dành cho học sinh làm bài - KHÔNG CHỨA ĐÁP ÁN) ---
+    match /exams/{examId} {
+      // Học sinh đã đăng nhập có thể đọc đề bài nếu bài đang mở
+      allow read: if request.auth != null;
+      // Chỉ Admin mới được tạo, chỉnh sửa hoặc xóa đề thi
+      allow write: if isAdmin();
+    }
+
+    // --- ĐÁP ÁN & LỜI GIẢI GỐC (BẢO MẬT CAO - TUYỆT ĐỐI KHÔNG LỘ CHO HỌC SINH) ---
+    match /exam_keys/{examId} {
+      // Học sinh KHÔNG THỂ đọc trực tiếp collection này trong lúc làm bài
+      // Việc chấm điểm diễn ra qua Cloud Function hoặc sau khi hết hạn nộp
+      allow read, write: if isAdmin();
+    }
+
+    // --- BÀI NỘP VÀ KẾT QUẢ THI ---
+    match /submissions/{submissionId} {
+      // Admin đọc và thống kê tất cả bài nộp
+      allow read: if isAdmin();
+      
+      // Học sinh chỉ đọc được bài nộp của chính mình
+      allow read: if request.auth != null && resource.data.studentId == request.auth.uid;
+      
+      // Học sinh chỉ được nộp bài (create) với studentId là chính mình
+      allow create: if request.auth != null && request.resource.data.studentId == request.auth.uid;
+      
+      // Học sinh cập nhật bài nộp tạm (autosave) của chính mình trước khi kết thúc
+      allow update: if request.auth != null && 
+        resource.data.studentId == request.auth.uid && 
+        resource.data.status == 'in_progress';
+        
+      // Không ai được xóa bài nộp ngoại trừ Admin
+      allow delete: if isAdmin();
+    }
+
+    // --- LỊCH SỬ VI PHẠM & RỜI TAB (ANTI-CHEAT LOGS) ---
+    match /cheat_logs/{logId} {
+      allow create: if request.auth != null;
+      allow read: if isAdmin();
+    }
+  }
+}

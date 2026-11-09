@@ -1,0 +1,24 @@
+{
+  "name": "Azota Toán - Khảo Sát & Kiểm Tra Toán Trực Tuyến",
+  "short_name": "Azota Toán",
+  "description": "Ứng dụng thi và kiểm tra Toán trực tuyến chuẩn GDPT 2018, hỗ trợ công thức KaTeX và chống gian lận",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "assets/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

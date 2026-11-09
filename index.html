@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Azota Toán - Nền Tảng Khảo Sát & Kiểm Tra Toán Trực Tuyến</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Azota Toán">
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+  <link rel="apple-touch-icon" href="./assets/icon-192.svg">
+
+  <!-- Tailwind CSS via CDN with Dark Mode Class config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- KaTeX CSS & JS for Math Equations -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+
+  <!-- SheetJS (xlsx) for Excel Import & Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Canvas Confetti for Celebration Effect -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Firebase SDK (Compat version for zero-build direct web integration) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+  
+  <!-- Root Container for React / Modern Component Architecture -->
+  <div id="appRoot" class="min-h-full flex flex-col">
+    <!-- Loading placeholder -->
+    <div class="min-h-screen flex items-center justify-center">
+      <div class="flex flex-col items-center space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-2xl animate-spin">
+          ∑
+        </div>
+        <p class="text-xs font-bold text-slate-500 tracking-wider uppercase">Đang khởi động Azota Toán...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic Modules -->
+  <script src="./js/config.js"></script>
+  <script src="./js/sampleData.js"></script>
+  <script src="./js/deviceSecurity.js"></script>
+  <script src="./js/grading.js"></script>
+  <script src="./js/excelHelper.js"></script>
+  <script src="./js/mathRenderer.js"></script>
+  <script src="./js/db.js"></script>
+
+  <!-- View Components -->
+  <script src="./js/views/navbar.js"></script>
+  <script src="./js/views/studentLogin.js"></script>
+  <script src="./js/views/studentDashboard.js"></script>
+  <script src="./js/views/examTaking.js"></script>
+  <script src="./js/views/examResult.js"></script>
+  <script src="./js/views/adminSetup.js"></script>
+  <script src="./js/views/adminLogin.js"></script>
+  <script src="./js/views/studentManagement.js"></script>
+  <script src="./js/views/examEditor.js"></script>
+  <script src="./js/views/examAssign.js"></script>
+  <script src="./js/views/analytics.js"></script>
+  <script src="./js/views/adminDashboard.js"></script>
+
+  <!-- Main Controller Entrypoint -->
+  <script src="./js/app.js"></script>
+</body>
+</html>
