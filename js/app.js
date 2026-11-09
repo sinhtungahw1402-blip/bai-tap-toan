@@ -232,10 +232,10 @@ const App = {
       if (!match) return false;
 
       const raw = decodeURIComponent(match[1]);
-      const jsonStr = decodeURIComponent(atob(raw));
+      const jsonStr = decodeURIComponent(escape(atob(raw)));
       const payload = JSON.parse(jsonStr);
 
-      if (payload.action !== 'PAIR_PHONE' || !payload.adminConfig) {
+      if (payload.action !== 'PAIR_PHONE' || !payload.adminPasswordHash) {
         alert('Mã ghép nối không hợp lệ!');
         return false;
       }
@@ -244,28 +244,44 @@ const App = {
 
       // 1. Lấy token thiết bị của điện thoại hiện tại
       const phoneToken = DeviceSecurity.getDeviceToken();
-      const updatedAdminConfig = await DeviceSecurity.authorizeAdditionalDevice(payload.adminConfig, phoneToken);
+      const phoneHash = await DeviceSecurity.sha256(phoneToken);
 
-      // 2. Lưu cấu hình quản trị mới đã ủy quyền cho điện thoại
+      // 2. Tạo hoặc cập nhật cấu hình quản trị cho điện thoại
+      const existingConfig = await DB.getAdminConfig() || {};
+      const trustedHashes = existingConfig.registeredDeviceHashes || [];
+      if (payload.registeredDeviceHash && !trustedHashes.includes(payload.registeredDeviceHash)) {
+        trustedHashes.push(payload.registeredDeviceHash);
+      }
+      if (!trustedHashes.includes(phoneHash)) {
+        trustedHashes.push(phoneHash);
+      }
+
+      const updatedAdminConfig = {
+        ...existingConfig,
+        isInitialized: true,
+        adminPasswordHash: payload.adminPasswordHash,
+        registeredDeviceHash: payload.registeredDeviceHash || phoneHash,
+        registeredDeviceHashes: trustedHashes,
+        failedAttempts: 0,
+        lockedUntil: null,
+        phoneAuthorizedAt: new Date().toISOString()
+      };
+
+      // 3. Lưu cấu hình quản trị mới đã ủy quyền cho điện thoại
       await DB.saveAdminConfig(updatedAdminConfig);
 
-      // 3. Nếu máy tính đã có cấu hình Firebase, tự động truyền sang điện thoại
+      // 4. Nếu máy tính đã có cấu hình Firebase, tự động truyền sang điện thoại
       if (payload.firebaseConfig) {
         localStorage.setItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG, payload.firebaseConfig);
         await DB.init();
-      } else if (payload.localDb) {
-        // Đồng bộ dữ liệu CSDL cục bộ sang điện thoại
-        try {
-          localStorage.setItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB, payload.localDb);
-        } catch (e) {}
       }
 
-      // 4. Kích hoạt phiên đăng nhập Quản trị viên trên điện thoại
+      // 5. Kích hoạt phiên đăng nhập Quản trị viên trên điện thoại
       this.currentUser = { role: 'admin', name: 'Quản trị viên' };
       localStorage.setItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION, 'true');
       localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
 
-      // 5. Xóa mã ghép nối khỏi URL để bảo mật
+      // 6. Xóa mã ghép nối khỏi URL để bảo mật
       history.replaceState(null, '', window.location.pathname);
 
       alert('🎉 ĐỒNG BỘ THÀNH CÔNG!\n\nĐiện thoại này đã được xác thực là Thiết Bị Quản Trị Viên Tin Cậy.\nBây giờ Thầy/Cô có thể quản lý đề thi và xem thống kê trên cả Máy tính và Điện thoại của mình!');

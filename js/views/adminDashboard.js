@@ -150,8 +150,8 @@ const AdminDashboard = {
             <span class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
               📸 Mở Camera điện thoại quét mã QR bên dưới:
             </span>
-            <div class="bg-white p-2.5 rounded-2xl shadow-sm border border-slate-200">
-              <img id="pairPhoneQrImg" src="" alt="Mã QR Ghép Nối Điện Thoại" class="w-44 h-44 object-contain" />
+            <div id="pairPhoneQrContainer" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 min-w-[200px] min-h-[200px] flex items-center justify-center">
+              <span class="text-xs text-slate-400">Đang tạo mã QR...</span>
             </div>
             <span class="text-[11px] text-slate-400 mt-2 text-center">
               Sau khi quét, điện thoại sẽ tự động nhận quyền Quản trị và đồng bộ dữ liệu ngay lập tức.
@@ -388,32 +388,40 @@ const AdminDashboard = {
     }
 
     const firebaseConfigStr = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG) || '';
-    const localDbStr = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB) || '';
 
-    // Tạo gói xác thực ủy quyền thiết bị an toàn
+    // Tạo gói xác thực ủy quyền thiết bị siêu gọn (dưới 250 ký tự để mã QR hiển thị ngay lập tức)
     const payload = {
       action: 'PAIR_PHONE',
-      adminConfig: {
-        isInitialized: true,
-        adminPasswordHash: adminConfig.adminPasswordHash,
-        registeredDeviceHash: adminConfig.registeredDeviceHash,
-        registeredDeviceHashes: adminConfig.registeredDeviceHashes || [adminConfig.registeredDeviceHash],
-        recoveryCodeHash: adminConfig.recoveryCodeHash,
-        recoveryCodeUsed: adminConfig.recoveryCodeUsed || false
-      },
-      firebaseConfig: firebaseConfigStr,
-      localDb: localDbStr,
+      adminPasswordHash: adminConfig.adminPasswordHash,
+      registeredDeviceHash: adminConfig.registeredDeviceHash,
       timestamp: Date.now()
     };
 
+    if (firebaseConfigStr && firebaseConfigStr.length < 500) {
+      payload.firebaseConfig = firebaseConfigStr;
+    }
+
     const jsonStr = JSON.stringify(payload);
-    const encoded = btoa(encodeURIComponent(jsonStr));
+    const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
     const pairUrl = `${window.location.origin}${window.location.pathname}#pair=${encoded}`;
 
-    const qrImg = document.getElementById('pairPhoneQrImg');
-    if (qrImg) {
-      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(pairUrl)}`;
+    const qrContainer = document.getElementById('pairPhoneQrContainer');
+    if (qrContainer) {
+      qrContainer.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrContainer, {
+          text: pairUrl,
+          width: 180,
+          height: 180,
+          colorDark: '#0f172a',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(pairUrl)}" alt="Mã QR Ghép Nối Điện Thoại" class="w-44 h-44 object-contain" />`;
+      }
     }
+
     const input = document.getElementById('pairPhoneLinkInput');
     if (input) {
       input.value = pairUrl;
