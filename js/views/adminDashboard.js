@@ -41,6 +41,22 @@ const AdminDashboard = {
               </button>
 
               <button
+                onclick="window.DB.exportDatabaseJson()"
+                class="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold text-xs transition flex items-center space-x-1.5 shadow-sm"
+                title="Tải về file sao lưu CSDL (gồm toàn bộ học sinh và đề thi) để chuyển sang điện thoại"
+              >
+                <span>📥 Xuất CSDL (.json)</span>
+              </button>
+
+              <label
+                class="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold text-xs transition flex items-center space-x-1.5 shadow-sm cursor-pointer"
+                title="Nhập file sao lưu CSDL từ máy khác vào thiết bị này"
+              >
+                <span>📤 Nhập CSDL</span>
+                <input type="file" accept=".json" class="hidden" onchange="window.AdminDashboard.handleDatabaseImport(event)" />
+              </label>
+
+              <button
                 onclick="window.AdminDashboard.openFirebaseModal()"
                 class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-bold text-xs transition flex items-center space-x-1.5"
               >
@@ -436,6 +452,24 @@ const AdminDashboard = {
       input.select();
       navigator.clipboard.writeText(input.value);
       alert('Đã sao chép link đồng bộ vào bộ nhớ đệm!\n\nThầy/Cô hãy gửi link này qua Zalo (Cloud của tôi) và mở trên điện thoại để hoàn tất đồng bộ.');
+    }
+  },
+
+  async handleDatabaseImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!confirm(`Xác nhận nạp tệp CSDL "${file.name}" vào thiết bị này? Dữ liệu hiện tại sẽ được cập nhật đồng bộ.`)) {
+      event.target.value = '';
+      return;
+    }
+
+    const res = await DB.importDatabaseJson(file);
+    if (!res.success) {
+      alert('Lỗi nạp dữ liệu: ' + res.error);
+    } else {
+      alert(`🎉 ĐỒNG BỘ DỮ LIỆU THÀNH CÔNG!\n\nĐã nạp ${res.studentCount} học sinh và ${res.examCount} đề thi vào thiết bị này.`);
+      location.reload();
     }
   },
 

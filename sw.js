@@ -1,5 +1,5 @@
 // Azota Toán - Service Worker (PWA Offline Cache & Install)
-const CACHE_NAME = 'azota-toan-v1.3';
+const CACHE_NAME = 'azota-toan-v1.4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

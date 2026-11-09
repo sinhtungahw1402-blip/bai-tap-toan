@@ -17,6 +17,20 @@ const DB = {
           this.firestore = firebase.firestore();
           this.isFirebaseActive = true;
           console.log('[DB] Kết nối Firebase Firestore thành công!');
+
+          // Tự động kiểm tra nếu Cloud chưa có dữ liệu thì đẩy dữ liệu cục bộ lên Cloud
+          try {
+            const snap = await this.firestore.collection('students').limit(1).get();
+            if (snap.empty) {
+              const local = this._getLocal();
+              if (local && local.students && local.students.length > 0) {
+                console.log(`[DB] Đang tự động tải ${local.students.length} học sinh và đề thi lên Firebase Cloud...`);
+                await this.syncLocalToFirestore(local);
+              }
+            }
+          } catch (e) {
+            console.warn('[DB] Lưu ý khi kiểm tra dữ liệu Cloud:', e);
+          }
           return;
         }
       }
@@ -334,6 +348,88 @@ const DB = {
     }
 
     return completeSubmission;
+  },
+
+  // Đồng bộ toàn bộ dữ liệu CSDL cục bộ lên Firestore
+  async syncLocalToFirestore(dbObj = null) {
+    if (!this.isFirebaseActive || !this.firestore) return;
+    const db = dbObj || this._getLocal();
+    
+    // Lưu adminConfig
+    if (db.adminConfig) {
+      await this.firestore.collection('admin_config').doc('device_lock').set(db.adminConfig, { merge: true });
+    }
+
+    // Lưu danh sách học sinh
+    if (db.students && db.students.length > 0) {
+      for (const st of db.students) {
+        await this.firestore.collection('students').doc(st.id).set(st, { merge: true });
+      }
+    }
+
+    // Lưu ngân hàng đề thi
+    if (db.exams && db.exams.length > 0) {
+      for (const ex of db.exams) {
+        await this.firestore.collection('exams').doc(ex.id).set(ex, { merge: true });
+      }
+    }
+
+    // Lưu các bài đã nộp
+    if (db.submissions && db.submissions.length > 0) {
+      for (const sub of db.submissions) {
+        await this.firestore.collection('submissions').doc(sub.id).set(sub, { merge: true });
+      }
+    }
+    console.log('[DB] Đã hoàn tất đồng bộ toàn bộ dữ liệu lên Firebase Firestore Cloud!');
+  },
+
+  // Xuất toàn bộ CSDL (Học sinh, Đề thi, Cấu hình) ra file JSON để sao lưu / chuyển máy
+  exportDatabaseJson() {
+    const db = this._getLocal();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `Du_Lieu_Azota_Toan_${db.students ? db.students.length : 0}HS_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  },
+
+  // Nhập dữ liệu CSDL từ file JSON
+  async importDatabaseJson(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!imported.students || !imported.exams) {
+            throw new Error('Tệp không đúng cấu trúc CSDL của Azota Toán!');
+          }
+
+          // Bảo lưu deviceToken của thiết bị hiện tại nếu có
+          const currentToken = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.DEVICE_TOKEN);
+          if (currentToken && imported.adminConfig) {
+            const currentHash = await DeviceSecurity.sha256(currentToken);
+            const hashes = imported.adminConfig.registeredDeviceHashes || [];
+            if (!hashes.includes(currentHash)) hashes.push(currentHash);
+            imported.adminConfig.registeredDeviceHashes = hashes;
+          }
+
+          this._saveLocal(imported);
+
+          // Nếu đang kết nối Firebase, đồng bộ tiếp lên Cloud
+          if (this.isFirebaseActive && this.firestore) {
+            await this.syncLocalToFirestore(imported);
+          }
+
+          resolve({ success: true, studentCount: imported.students.length, examCount: imported.exams.length });
+        } catch (err) {
+          resolve({ success: false, error: err.message });
+        }
+      };
+      reader.onerror = () => resolve({ success: false, error: 'Không thể đọc tệp tin' });
+      reader.readAsText(file);
+    });
   },
 
   // Khôi phục dữ liệu mẫu
