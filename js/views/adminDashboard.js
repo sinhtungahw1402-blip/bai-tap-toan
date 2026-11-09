@@ -374,19 +374,57 @@ const AdminDashboard = {
   },
 
   saveFirebaseConfig() {
-    const raw = document.getElementById('firebaseConfigInput').value.trim();
+    let raw = document.getElementById('firebaseConfigInput').value.trim();
     if (!raw) {
-      alert('Vui lòng nhập cấu hình JSON của Firebase!');
+      alert('Vui lòng nhập cấu hình Firebase!');
       return;
     }
-    try {
-      JSON.parse(raw); // Validate JSON
-      localStorage.setItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG, raw);
-      alert('Đã lưu cấu hình Firebase! Hệ thống sẽ tải lại để kết nối.');
-      location.reload();
-    } catch (e) {
-      alert('Định dạng JSON cấu hình không hợp lệ: ' + e.message);
+
+    // Nếu người dùng dán cả thẻ <script> hoặc "const firebaseConfig = { ... };"
+    if (raw.includes('{') && raw.includes('}')) {
+      const start = raw.indexOf('{');
+      const end = raw.lastIndexOf('}');
+      raw = raw.substring(start, end + 1);
     }
+
+    let parsedConfig = null;
+    try {
+      parsedConfig = JSON.parse(raw);
+    } catch (e) {
+      // Tự động phân tích dạng JavaScript Object không có dấu ngoặc kép chuẩn JSON
+      try {
+        const extractVal = (key) => {
+          const match = raw.match(new RegExp(`['"]?${key}['"]?\\s*:\\s*['"]([^'"]+)['"]`));
+          return match ? match[1] : '';
+        };
+
+        parsedConfig = {
+          apiKey: extractVal('apiKey'),
+          authDomain: extractVal('authDomain'),
+          projectId: extractVal('projectId'),
+          storageBucket: extractVal('storageBucket'),
+          messagingSenderId: extractVal('messagingSenderId'),
+          appId: extractVal('appId')
+        };
+
+        if (!parsedConfig.apiKey || !parsedConfig.projectId) {
+          throw new Error('Thiếu apiKey hoặc projectId');
+        }
+      } catch (err2) {
+        alert('Không thể nhận diện cấu hình Firebase. Vui lòng sao chép toàn bộ đoạn mã firebaseConfig từ Firebase Console!');
+        return;
+      }
+    }
+
+    if (!parsedConfig.apiKey || !parsedConfig.projectId) {
+      alert('Cấu hình Firebase không hợp lệ (phải có apiKey và projectId)!');
+      return;
+    }
+
+    const cleanJson = JSON.stringify(parsedConfig, null, 2);
+    localStorage.setItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG, cleanJson);
+    alert('🎉 ĐÃ LƯU CẤU HÌNH FIREBASE!\n\nHệ thống sẽ tải lại để kết nối với CSDL Đám Mây Cloud.');
+    location.reload();
   },
 
   clearFirebaseConfig() {
