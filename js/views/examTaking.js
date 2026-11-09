@@ -15,7 +15,7 @@ const ExamTaking = {
 
   // Khởi động phòng thi
   async init(examId, student) {
-    this.student = student;
+    this.student = student || { id: 'hs_demo', name: 'Học sinh', class: '12A1' };
     this.exam = await DB.getExamById(examId, 'student');
     this.currentIndex = 0;
     this.isSubmitting = false;
@@ -27,7 +27,7 @@ const ExamTaking = {
     }
 
     // 1. Khôi phục bài làm từ LocalStorage (nếu rớt mạng hoặc tải lại trang)
-    const storageKey = `azota_exam_session_${this.exam.id}_${student.id}`;
+    const storageKey = `azota_exam_session_${this.exam.id}_${this.student.id}`;
     const savedSession = localStorage.getItem(storageKey);
 
     if (savedSession) {
@@ -155,9 +155,8 @@ const ExamTaking = {
       document.addEventListener('cut', this._preventCopy);
     }
 
-    // 2. Bắt sự kiện chuyển tab / ẩn màn hình
+    // 2. Bắt sự kiện chuyển tab / ẩn màn hình (chính xác, không bị false positive khi mở bàn phím điện thoại)
     document.addEventListener('visibilitychange', this._handleVisibilityChange);
-    window.addEventListener('blur', this._handleWindowBlur);
   },
 
   _cleanupAntiCheat() {
@@ -165,7 +164,6 @@ const ExamTaking = {
     document.removeEventListener('copy', this._preventCopy);
     document.removeEventListener('cut', this._preventCopy);
     document.removeEventListener('visibilitychange', this._handleVisibilityChange);
-    window.removeEventListener('blur', this._handleWindowBlur);
     if (this.timerInterval) clearInterval(this.timerInterval);
   },
 

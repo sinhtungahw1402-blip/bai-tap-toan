@@ -457,20 +457,32 @@ const ExamEditor = {
     };
     this.activeTab = 'edit';
     this.excelErrors = [];
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   async editExam(examId) {
     this.currentExam = await DB.getExamById(examId, 'admin');
     this.activeTab = 'edit';
     this.excelErrors = [];
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   closeEditor() {
     this.activeTab = 'list';
     this.currentExam = null;
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   async saveCurrentExam() {
@@ -500,7 +512,11 @@ const ExamEditor = {
   async deleteExam(examId) {
     if (!confirm('Bạn có chắc chắn muốn xóa bài kiểm tra này? Tất cả bài làm của học sinh thuộc đề này cũng sẽ bị xóa.')) return;
     await DB.deleteExam(examId);
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   // Import câu hỏi từ file Excel
@@ -514,19 +530,31 @@ const ExamEditor = {
     if (!result.success) {
       this.excelErrors = result.errors;
       alert(`Phát hiện ${result.errors.length} lỗi khi đọc file! Vui lòng kiểm tra thông báo màu đỏ bên dưới.`);
-      window.App.renderApp();
+      if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+        window.AdminDashboard.switchTab('exams');
+      } else {
+        window.App.renderApp();
+      }
       return;
     }
 
     this.excelErrors = [];
     this.currentExam.questions = result.questions;
     alert(`Đã nhập thành công ${result.questions.length} câu hỏi từ file Excel!`);
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   clearExcelErrors() {
     this.excelErrors = [];
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   // Question Modal Operations
@@ -695,13 +723,21 @@ const ExamEditor = {
     }
 
     document.getElementById('questionEditorModal').classList.add('hidden');
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   deleteQuestion(index) {
     if (!confirm('Xóa câu hỏi này?')) return;
     this.currentExam.questions.splice(index, 1);
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
   }
 };
 

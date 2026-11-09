@@ -15,7 +15,8 @@ const ExamResult = {
       `;
     }
 
-    const exam = await DB.getExamById(submission.examId, 'admin'); // Cần full đề để hiển thị đáp án đúng nếu được phép
+    const rawExam = await DB.getExamById(submission.examId, 'admin');
+    const exam = rawExam || { title: 'Bài kiểm tra Toán', dueTime: null, scale: 10, viewScoreMode: 'immediate', viewAnswerMode: 'immediate', questions: [] };
     const now = new Date();
     const isDuePassed = exam.dueTime ? (now > new Date(exam.dueTime)) : true;
     const canViewScore = exam.viewScoreMode === 'immediate' || isDuePassed;

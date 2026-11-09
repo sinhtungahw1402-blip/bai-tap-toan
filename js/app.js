@@ -1,4 +1,4 @@
-// Azota Toán - Main Application Controller & Router
+// Azota Toán - Main Application Controller & Router (Tự khởi động, Bảo vệ chống crash)
 const App = {
   currentView: 'student-login',
   currentUser: null, // { role: 'student' | 'admin', ... }
@@ -7,51 +7,55 @@ const App = {
   async init() {
     console.log('[App] Khởi động Azota Toán...');
 
-    // 1. Đăng ký Service Worker cho PWA
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+    // 1. Đăng ký Service Worker cho PWA (bỏ qua nếu file:// hoặc không hỗ trợ)
+    try {
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         navigator.serviceWorker.register('./sw.js')
           .then(reg => console.log('[SW] ServiceWorker đã đăng ký:', reg.scope))
-          .catch(err => console.warn('[SW] Lỗi đăng ký SW:', err));
-      });
-    }
+          .catch(err => console.warn('[SW] Bỏ qua đăng ký SW cục bộ'));
+      }
+    } catch (e) {}
 
     // 2. Khởi tạo chế độ Sáng/Tối
-    const isDark = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.DARK_MODE) === 'true';
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    }
+    try {
+      const isDark = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.DARK_MODE) === 'true';
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
 
     // 3. Khởi tạo CSDL
-    await DB.init();
+    try {
+      await DB.init();
+    } catch (e) {
+      console.warn('[App] Lỗi init DB:', e);
+    }
 
     // 4. Khôi phục phiên đăng nhập
-    const savedAdmin = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION);
-    const savedStudent = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
+    try {
+      const savedAdmin = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION);
+      const savedStudent = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
 
-    if (savedAdmin) {
-      this.currentUser = { role: 'admin', name: 'Quản trị viên' };
-      this.currentView = 'admin-dashboard';
-    } else if (savedStudent) {
-      try {
+      if (savedAdmin) {
+        this.currentUser = { role: 'admin', name: 'Quản trị viên' };
+        this.currentView = 'admin-dashboard';
+      } else if (savedStudent) {
         const st = JSON.parse(savedStudent);
         this.currentUser = { role: 'student', ...st };
         this.currentView = 'student-dashboard';
-      } catch (e) {
-        localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
+      } else {
         this.currentView = 'student-login';
       }
-    } else {
+    } catch (e) {
       this.currentView = 'student-login';
     }
 
-    // 5. Lắng nghe cập nhật dữ liệu đa tab qua BroadcastChannel
+    // 5. Lắng nghe cập nhật dữ liệu đa tab qua BroadcastChannel (nếu có)
     try {
       if (typeof BroadcastChannel !== 'undefined') {
         const bc = new BroadcastChannel('azota_data_sync');
         bc.onmessage = (event) => {
           if (event.data && event.data.type === 'DB_UPDATED' && this.currentView !== 'exam-taking') {
-            console.log('[App] Đồng bộ dữ liệu cập nhật từ tab khác');
             this.renderApp();
           }
         };
@@ -67,80 +71,103 @@ const App = {
     const root = document.getElementById('appRoot');
     if (!root) return;
 
-    let viewHtml = '';
+    try {
+      let viewHtml = '';
 
-    // Render Navigation Bar (trừ màn hình làm bài thi để tạo không gian tập trung tối đa)
-    const showNavbar = this.currentView !== 'exam-taking';
-    const navHtml = showNavbar
-      ? Navbar.render(this.currentUser, () => this.logout(), (v) => this.navigateTo(v), () => this.toggleDarkMode(), this.currentView)
-      : '';
+      // Render Navigation Bar (trừ màn hình làm bài thi để tạo không gian tập trung tối đa)
+      const showNavbar = this.currentView !== 'exam-taking';
+      const navHtml = showNavbar
+        ? Navbar.render(this.currentUser, () => this.logout(), (v) => this.navigateTo(v), () => this.toggleDarkMode(), this.currentView)
+        : '';
 
-    // Route Switching
-    switch (this.currentView) {
-      case 'student-login':
-        viewHtml = StudentLogin.render();
-        break;
+      // Route Switching
+      switch (this.currentView) {
+        case 'student-login':
+          viewHtml = StudentLogin.render();
+          break;
 
-      case 'student-dashboard':
-        viewHtml = await StudentDashboard.render(this.currentUser);
-        break;
+        case 'student-dashboard':
+          if (!this.currentUser) {
+            this.currentView = 'student-login';
+            viewHtml = StudentLogin.render();
+          } else {
+            viewHtml = await StudentDashboard.render(this.currentUser);
+          }
+          break;
 
-      case 'exam-taking':
-        viewHtml = ExamTaking.render();
-        break;
+        case 'exam-taking':
+          viewHtml = ExamTaking.render();
+          break;
 
-      case 'exam-result':
-        viewHtml = await ExamResult.render(this.viewParam, this.currentUser);
-        break;
+        case 'exam-result':
+          viewHtml = await ExamResult.render(this.viewParam, this.currentUser);
+          break;
 
-      case 'admin-login':
-        // Kiểm tra xem đã có admin nào thiết lập chưa
-        const adminConfig = await DB.getAdminConfig();
-        if (!adminConfig || !adminConfig.isInitialized) {
+        case 'admin-login':
+          const adminConfig = await DB.getAdminConfig();
+          if (!adminConfig || !adminConfig.isInitialized) {
+            viewHtml = AdminSetup.render();
+          } else {
+            viewHtml = AdminLogin.render();
+          }
+          break;
+
+        case 'admin-setup':
           viewHtml = AdminSetup.render();
-        } else {
-          viewHtml = AdminLogin.render();
-        }
-        break;
+          break;
 
-      case 'admin-setup':
-        viewHtml = AdminSetup.render();
-        break;
+        case 'admin-dashboard':
+          viewHtml = await AdminDashboard.render(AdminDashboard.currentTab || 'overview', this.viewParam);
+          break;
 
-      case 'admin-dashboard':
-        viewHtml = await AdminDashboard.render('overview');
-        break;
+        case 'student-management':
+          AdminDashboard.currentTab = 'students';
+          viewHtml = await AdminDashboard.render('students');
+          break;
 
-      case 'student-management':
-        viewHtml = await AdminDashboard.render('students');
-        break;
+        case 'exam-editor':
+          AdminDashboard.currentTab = 'exams';
+          viewHtml = await AdminDashboard.render('exams');
+          break;
 
-      case 'exam-editor':
-        viewHtml = await AdminDashboard.render('exams');
-        break;
+        case 'exam-assign':
+          AdminDashboard.currentTab = 'assign';
+          viewHtml = await AdminDashboard.render('assign', this.viewParam);
+          break;
 
-      case 'exam-assign':
-        viewHtml = await AdminDashboard.render('assign', this.viewParam);
-        break;
+        case 'analytics':
+          AdminDashboard.currentTab = 'analytics';
+          viewHtml = await AdminDashboard.render('analytics', this.viewParam);
+          break;
 
-      case 'analytics':
-        viewHtml = await AdminDashboard.render('analytics', this.viewParam);
-        break;
+        default:
+          viewHtml = StudentLogin.render();
+      }
 
-      default:
-        viewHtml = StudentLogin.render();
-    }
+      root.innerHTML = `
+        ${navHtml}
+        <main class="min-h-[calc(100vh-4rem)]">
+          ${viewHtml}
+        </main>
+      `;
 
-    root.innerHTML = `
-      ${navHtml}
-      <main class="min-h-[calc(100vh-4rem)]">
-        ${viewHtml}
-      </main>
-    `;
+      // Kích hoạt render công thức KaTeX cho toàn bộ trang
+      if (typeof MathRenderer !== 'undefined') {
+        MathRenderer.renderElement(root);
+      }
 
-    // Kích hoạt render công thức KaTeX cho toàn bộ trang
-    if (typeof MathRenderer !== 'undefined') {
-      MathRenderer.renderElement(root);
+    } catch (err) {
+      console.error('[App] Lỗi render:', err);
+      root.innerHTML = `
+        <div class="p-8 max-w-lg mx-auto text-center space-y-4">
+          <div class="text-4xl">⚠️</div>
+          <h2 class="text-lg font-bold text-slate-800 dark:text-white">Đã xảy ra lỗi tải giao diện</h2>
+          <p class="text-xs text-red-500 font-mono bg-red-50 dark:bg-red-950/40 p-3 rounded-xl">${err.message}</p>
+          <button onclick="window.DB.resetToSampleData(); location.reload();" class="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs">
+            Khôi phục CSDL & Tải Lại Trang
+          </button>
+        </div>
+      `;
     }
   },
 
@@ -153,29 +180,40 @@ const App = {
 
   loginAsStudent(student) {
     this.currentUser = { role: 'student', ...student };
-    localStorage.setItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION, JSON.stringify(student));
-    localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION);
+    try {
+      localStorage.setItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION, JSON.stringify(student));
+      localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION);
+    } catch (e) {}
     this.navigateTo('student-dashboard');
   },
 
   loginAsAdmin() {
     this.currentUser = { role: 'admin', name: 'Quản trị viên' };
-    localStorage.setItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION, 'true');
-    localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
+    try {
+      localStorage.setItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION, 'true');
+      localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
+    } catch (e) {}
     this.navigateTo('admin-dashboard');
   },
 
   logout() {
-    localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
-    localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION);
+    try {
+      localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
+      localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION);
+    } catch (e) {}
     this.currentUser = null;
     this.navigateTo('student-login');
   },
 
-  startExam(examId) {
+  async startExam(examId) {
+    if (!this.currentUser) {
+      // Tự động gán tài khoản học sinh thử nghiệm nếu chưa đăng nhập
+      const students = await DB.getStudents();
+      this.currentUser = { role: 'student', ...(students[0] || { id: 'hs_guest', name: 'Học sinh thử nghiệm', class: '12A1' }) };
+    }
     this.currentView = 'exam-taking';
     this.viewParam = examId;
-    ExamTaking.init(examId, this.currentUser);
+    await ExamTaking.init(examId, this.currentUser);
   },
 
   viewResult(submissionId) {
@@ -184,14 +222,21 @@ const App = {
 
   toggleDarkMode() {
     const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem(APP_CONFIG.STORAGE_KEYS.DARK_MODE, String(isDark));
+    try {
+      localStorage.setItem(APP_CONFIG.STORAGE_KEYS.DARK_MODE, String(isDark));
+    } catch (e) {}
     this.renderApp();
   }
 };
 
 window.App = App;
 
-// Khởi chạy khi tài liệu DOM sẵn sàng
-document.addEventListener('DOMContentLoaded', () => {
+// Khởi chạy ngay (Bất kể DOMContentLoaded đã kích hoạt hay chưa)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+  });
+} else {
+  // DOM đã sẵn sàng -> chạy ngay lập tức!
   App.init();
-});
+}

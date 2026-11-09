@@ -1,53 +1,67 @@
 # =============================================================================
-# AZOTA TOÁN - MÁY CHỦ THI TRỰC TUYẾN CỤC BỘ (POWERSHELL WEB SERVER)
+# AZOTA TOÁN - MÁY CHỦ WEB TỰ ĐỘNG CHỌN CỔNG & KHỞI CHẠY 1 CÚ NHẤP CHUỘT
 # =============================================================================
-# Chạy trực tiếp trên Windows mà không cần cài Node.js, Python hay bất cứ phần mềm nào.
-# Tự động phát hiện IP Wi-Fi để học sinh dùng điện thoại cùng mạng có thể vào thi!
-# =============================================================================
-
-param([int]$port = 8080)
 
 $folder = $PSScriptRoot
 
-# Lấy địa chỉ IP nội bộ Wi-Fi/LAN của máy tính này
-$localIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { 
+# Tìm địa chỉ IP Wi-Fi
+$localIP = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { 
     $_.InterfaceAlias -notlike "*Loopback*" -and $_.IPAddress -notlike "169.254*" 
 } | Select-Object -ExpandProperty IPAddress | Select-Object -First 1)
 
 if (-not $localIP) { $localIP = "localhost" }
 
-$listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://*:$port/")
+# Tự động tìm cổng khả dụng (8080, 8081, 8082, 3000, 5000, ...)
+$portsToTry = @(8080, 8081, 8082, 3000, 5000, 8888, 9090)
+$listener = $null
+$activePort = 8080
 
-try {
-    $listener.Start()
-} catch {
-    $listener = New-Object System.Net.HttpListener
-    $listener.Prefixes.Add("http://localhost:$port/")
-    $listener.Start()
+foreach ($p in $portsToTry) {
+    try {
+        $tempListener = New-Object System.Net.HttpListener
+        # Thử bind IP nội bộ và localhost
+        $tempListener.Prefixes.Add("http://localhost:$p/")
+        if ($localIP -ne "localhost") {
+            try { $tempListener.Prefixes.Add("http://${localIP}:$p/") } catch {}
+        }
+        $tempListener.Start()
+        $listener = $tempListener
+        $activePort = $p
+        break
+    } catch {
+        # Cổng đang bận, thử cổng tiếp theo
+        if ($tempListener) { $tempListener.Close() }
+    }
 }
 
+if (-not $listener) {
+    Write-Host "Không thể mở cổng mạng. Bạn có thể mở trực tiếp file 'index.html' bằng trình duyệt!" -ForegroundColor Red
+    Start-Process (Join-Path $folder "index.html")
+    exit
+}
+
+Clear-Host
+Write-Host "=================================================================" -ForegroundColor Cyan
+Write-Host "   🎓 AZOTA TOÁN - MÁY CHỦ WEB ĐANG HOẠT ĐỘNG! 🎓" -ForegroundColor Green
+Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host "   🎓 AZOTA TOÁN - NỀN TẢNG THI TRỰC TUYẾN CHUẨN GDPT 2018 🎓" -ForegroundColor Green
-Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host " [1] Trên Máy Tính (Thầy/Cô & Học sinh thử nghiệm):" -ForegroundColor Yellow
-Write-Host "     👉 http://localhost:$port" -ForegroundColor White
+Write-Host " [1] Trên Máy Tính:" -ForegroundColor Yellow
+Write-Host "     👉 http://localhost:$activePort" -ForegroundColor White
 Write-Host ""
 Write-Host " [2] Trên Điện Thoại (Cùng mạng Wi-Fi với máy tính này):" -ForegroundColor Yellow
-Write-Host "     👉 http://${localIP}:$port" -ForegroundColor Green
-Write-Host "     (Mở Safari/Chrome trên điện thoại và gõ địa chỉ trên để cài PWA)" -ForegroundColor DarkGray
+Write-Host "     👉 http://${localIP}:$activePort" -ForegroundColor Green
 Write-Host ""
-Write-Host " [3] Tài khoản thử nghiệm có sẵn:" -ForegroundColor Magenta
-Write-Host "     - Học sinh thi ngay: tranminh | Mật khẩu: 123456" -ForegroundColor White
-Write-Host "     - Quản trị viên: Nhấn 'Quản trị viên' để đăng ký thiết bị lần đầu" -ForegroundColor White
+Write-Host " [3] Hướng dẫn sử dụng nhanh:" -ForegroundColor Magenta
+Write-Host "     - Bấm nút 'VÀO LÀM BÀI THI THỬ NGAY' để thi thử ngay lập tức" -ForegroundColor White
+Write-Host "     - Hoặc bấm chọn nhanh 1 trong 3 bạn học sinh mẫu (Pass: 123456)" -ForegroundColor White
+Write-Host "     - Quản trị viên: Bấm nút 'Cổng Quản trị viên' để đăng ký thiết bị" -ForegroundColor White
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host " Nhấn Ctrl + C để dừng máy chủ." -ForegroundColor DarkYellow
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Tự động mở trình duyệt web
-Start-Process "http://localhost:$port"
+# Mở trình duyệt web tự động
+Start-Process "http://localhost:$activePort"
 
 $mimeTypes = @{
     ".html" = "text/html; charset=utf-8"
@@ -88,7 +102,6 @@ while ($listener.IsListening) {
         }
         $response.Close()
     } catch {
-        # Đóng server khi người dùng nhấn Ctrl+C
         break
     }
 }

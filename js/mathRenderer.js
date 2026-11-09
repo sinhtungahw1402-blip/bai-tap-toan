@@ -41,16 +41,20 @@ const MathRenderer = {
   // Render toán học trực tiếp vào một DOM element
   renderElement(element) {
     if (!element) return;
-    if (typeof renderMathInElement !== 'undefined') {
-      renderMathInElement(element, {
-        delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false },
-          { left: '\\[', right: '\\]', display: true },
-          { left: '\\(', right: '\\)', display: false }
-        ],
-        throwOnError: false
-      });
+    try {
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(element, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false
+        });
+      }
+    } catch (e) {
+      console.warn('[MathRenderer] Bỏ qua lỗi render:', e);
     }
   },
 

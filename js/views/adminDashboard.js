@@ -129,8 +129,9 @@ const AdminDashboard = {
     const isActive = this.currentTab === key;
     return `
       <button
+        data-tab-key="${key}"
         onclick="window.AdminDashboard.switchTab('${key}')"
-        class="whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition ${
+        class="admin-nav-tab whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition ${
           isActive
             ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80'
@@ -248,9 +249,37 @@ const AdminDashboard = {
     `;
   },
 
-  switchTab(tab, param = null) {
+  async switchTab(tab, param = null) {
     this.currentTab = tab;
-    window.App.renderApp(param);
+    const container = document.getElementById('adminTabContainer');
+
+    if (container) {
+      // 1. Cập nhật màu sắc cho các nút tab ngay lập tức
+      const buttons = document.querySelectorAll('.admin-nav-tab');
+      buttons.forEach(btn => {
+        const key = btn.getAttribute('data-tab-key');
+        if (key === tab) {
+          btn.className = 'admin-nav-tab whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition bg-amber-500 text-white shadow-md shadow-amber-500/20';
+        } else {
+          btn.className = 'admin-nav-tab whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80';
+        }
+      });
+
+      // 2. Tải và hiển thị nội dung tab tương ứng
+      const students = await DB.getStudents();
+      const exams = await DB.getExams(null, 'admin');
+      const submissions = await DB.getSubmissions();
+      const adminConfig = await DB.getAdminConfig();
+
+      container.innerHTML = await this._renderActiveTabContent(tab, { students, exams, submissions, adminConfig, param });
+
+      // 3. Render công thức Toán nếu có
+      if (typeof MathRenderer !== 'undefined') {
+        MathRenderer.renderElement(container);
+      }
+    } else {
+      window.App.renderApp(param);
+    }
   },
 
   openFirebaseModal() {

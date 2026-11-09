@@ -51,6 +51,14 @@ const Analytics = {
     // Sắp xếp học sinh theo điểm giảm dần để xếp hạng
     const rankedStudents = [...submittedStudents].sort((a, b) => subMap[b.id].score - subMap[a.id].score);
 
+    // Lưu cache dữ liệu để xuất Excel và sao chép an toàn
+    this.cachedData = {
+      currentExam,
+      targetStudents,
+      submissions,
+      unsubmittedStudents
+    };
+
     return `
       <div class="space-y-6">
         
@@ -65,14 +73,14 @@ const Analytics = {
 
           <div class="flex items-center flex-wrap gap-2">
             <button
-              onclick="window.ExcelHelper.exportScoreboard('${currentExam.title}', ${JSON.stringify(targetStudents).replace(/"/g, '&quot;')}, ${JSON.stringify(submissions).replace(/"/g, '&quot;')})"
+              onclick="window.Analytics.exportScoreboard()"
               class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center space-x-1.5"
             >
               <span>📊 Xuất Bảng Điểm Excel</span>
             </button>
 
             <button
-              onclick="window.ExcelHelper.exportQuestionAnalysis('${currentExam.title}', ${JSON.stringify(currentExam.questions || []).replace(/"/g, '&quot;')}, ${JSON.stringify(submissions).replace(/"/g, '&quot;')})"
+              onclick="window.Analytics.exportQuestionAnalysis()"
               class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition flex items-center space-x-1.5"
             >
               <span>📑 Xuất Phân Tích Câu Hỏi</span>
@@ -345,7 +353,7 @@ const Analytics = {
               </div>
 
               <button
-                onclick="window.Analytics.copyReminderMessage('${currentExam.title}', ${JSON.stringify(unsubmittedStudents).replace(/"/g, '&quot;')})"
+                onclick="window.Analytics.copyReminderMessage()"
                 class="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs transition flex items-center space-x-1"
               >
                 <span>📋 Sao Chép Tin Nhắc Nhở</span>
@@ -369,12 +377,40 @@ const Analytics = {
 
   changeExam(id) {
     this.selectedExamId = id;
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'analytics') {
+      window.AdminDashboard.switchTab('analytics', id);
+    } else {
+      window.App.renderApp();
+    }
   },
 
-  copyReminderMessage(examTitle, unsubmitted) {
-    const names = unsubmitted.map(s => `${s.name} (${s.class})`).join(', ');
-    const msg = `📢 [NHẮC NHỞ LÀM BÀI]: Thầy/Cô nhắc các bạn học sinh sau chưa nộp bài kiểm tra "${examTitle}":\n${names}\nCác em hãy nhanh chóng đăng nhập để hoàn thành bài thi trước hạn nộp nhé!`;
+  exportScoreboard() {
+    if (!this.cachedData || !this.cachedData.currentExam) {
+      alert('Chưa có dữ liệu bài thi để xuất Excel!');
+      return;
+    }
+    const { currentExam, targetStudents, submissions } = this.cachedData;
+    ExcelHelper.exportScoreboard(currentExam.title, targetStudents, submissions);
+  },
+
+  exportQuestionAnalysis() {
+    if (!this.cachedData || !this.cachedData.currentExam) {
+      alert('Chưa có dữ liệu bài thi để xuất Excel!');
+      return;
+    }
+    const { currentExam, submissions } = this.cachedData;
+    ExcelHelper.exportQuestionAnalysis(currentExam.title, currentExam.questions || [], submissions);
+  },
+
+  copyReminderMessage() {
+    if (!this.cachedData || !this.cachedData.currentExam) return;
+    const { currentExam, unsubmittedStudents } = this.cachedData;
+    if (!unsubmittedStudents || unsubmittedStudents.length === 0) {
+      alert('Tất cả học sinh đều đã nộp bài!');
+      return;
+    }
+    const names = unsubmittedStudents.map(s => `${s.name} (${s.class})`).join(', ');
+    const msg = `📢 [NHẮC NHỞ LÀM BÀI]: Thầy/Cô nhắc các bạn học sinh sau chưa nộp bài kiểm tra "${currentExam.title}":\n${names}\nCác em hãy nhanh chóng đăng nhập để hoàn thành bài thi trước hạn nộp nhé!`;
     navigator.clipboard.writeText(msg);
     alert('Đã sao chép nội dung nhắc nhở vào bộ nhớ đệm!\nBạn có thể dán vào nhóm Zalo/Facebook lớp.');
   }

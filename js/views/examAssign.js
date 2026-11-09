@@ -198,7 +198,11 @@ const ExamAssign = {
 
   changeExam(id) {
     this.selectedExamId = id;
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'assign') {
+      window.AdminDashboard.switchTab('assign', id);
+    } else {
+      window.App.renderApp();
+    }
   },
 
   async saveAssignment() {

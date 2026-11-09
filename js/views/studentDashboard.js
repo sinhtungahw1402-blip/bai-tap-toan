@@ -1,9 +1,18 @@
-// Azota Toán - Student Dashboard View
+// Azota Toán - Student Dashboard View (Luôn hiển thị đề thi, Nút vào thi trực quan)
 const StudentDashboard = {
   activeTab: 'active', // 'active' | 'due_soon' | 'completed' | 'expired' | 'history'
 
   async render(student) {
-    const exams = await DB.getExams(student.class, 'student');
+    if (!student) {
+      student = { id: 'hs_demo', name: 'Học sinh', class: '12A1' };
+    }
+
+    let exams = await DB.getExams(student.class, 'student');
+    if (!exams || exams.length === 0) {
+      // Nếu không có đề theo lớp thì lấy tất cả đề
+      exams = await DB.getExams(null, 'student');
+    }
+
     const submissions = await DB.getSubmissions(null, student.id);
     const subMap = {};
     submissions.forEach(s => {
@@ -41,11 +50,15 @@ const StudentDashboard = {
         if (hoursLeft <= 24 && hoursLeft > 0) {
           dueSoonExams.push({ exam, submission: hasSub, hoursLeft: Math.round(hoursLeft) });
         }
-        if (!hasSub || (exam.allowRetake && exam.allowRetake > 1)) {
-          activeExams.push({ exam, submission: hasSub });
-        }
+        // Luôn đưa vào tab Đang mở để học sinh nhìn thấy và bấm vào thi
+        activeExams.push({ exam, submission: hasSub });
       }
     });
+
+    // Nếu vẫn chưa có bài nào mở, đưa toàn bộ đề có sẵn vào
+    if (activeExams.length === 0 && exams.length > 0) {
+      exams.forEach(ex => activeExams.push({ exam: ex, submission: subMap[ex.id] }));
+    }
 
     return `
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -62,8 +75,8 @@ const StudentDashboard = {
               <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
                 Chào em, ${student.name}! 👋
               </h1>
-              <p class="text-blue-100 text-sm mt-1 max-w-xl">
-                Hãy xem kỹ thời gian làm bài, chuẩn bị nháp và giữ đường truyền ổn định trước khi bấm vào phòng thi nhé.
+              <p class="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl">
+                Chuẩn bị nháp, máy tính cầm tay và giữ kết nối mạng ổn định trước khi bấm vào phòng thi nhé.
               </p>
             </div>
 
@@ -119,7 +132,7 @@ const StudentDashboard = {
   _renderTabContent(tab, data) {
     if (tab === 'active') {
       if (data.activeExams.length === 0) {
-        return this._renderEmptyState('Hiện tại không có bài kiểm tra nào đang mở cho lớp của em.');
+        return this._renderEmptyState('Hiện tại không có bài kiểm tra nào đang mở.');
       }
       return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         ${data.activeExams.map(item => this._renderExamCard(item.exam, item.submission, 'active')).join('')}
@@ -169,45 +182,45 @@ const StudentDashboard = {
     }) : 'Không giới hạn';
 
     return `
-      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+      <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/80 dark:border-slate-700/80 p-5 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
         <div>
           <!-- Badges Bar -->
           <div class="flex items-center justify-between gap-2 mb-3">
-            <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300">
+            <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300">
               ${exam.classGroup || 'Toán học'}
             </span>
 
             ${submission ? `
-              <span class="px-2.5 py-1 rounded-lg text-xs font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
-                ⭐ ${submission.score} / ${exam.scale || 10}đ
+              <span class="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
+                ⭐ Đạt ${submission.score}đ
               </span>
             ` : (status === 'due_soon' ? `
-              <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 animate-pulse">
+              <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 animate-pulse">
                 ⏳ Còn ${hoursLeft}h
               </span>
             ` : (status === 'expired' ? `
-              <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+              <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
                 Đã quá hạn
               </span>
             ` : `
-              <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300">
-                Đang mở
+              <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
+                ● Đang mở
               </span>
             `))}
           </div>
 
           <!-- Exam Title -->
-          <h3 class="text-base font-bold text-slate-900 dark:text-white line-clamp-2 mb-2 leading-snug">
+          <h3 class="text-base font-extrabold text-slate-900 dark:text-white line-clamp-2 mb-2 leading-snug">
             ${exam.title}
           </h3>
 
           <!-- Details Pills -->
           <div class="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 mb-4">
             <div class="flex items-center space-x-1.5">
-              <span>⏱️ Thời gian: <strong class="text-slate-700 dark:text-slate-200">${exam.durationMinutes} phút</strong></span>
+              <span>⏱️ Thời lượng: <strong class="text-slate-700 dark:text-slate-200">${exam.durationMinutes} phút</strong></span>
             </div>
             <div class="flex items-center space-x-1.5">
-              <span>📝 Số lượng: <strong class="text-slate-700 dark:text-slate-200">${qCount} câu</strong> (${p1Count} TN, ${p2Count} Đ/S, ${p3Count} Tự luận)</span>
+              <span>📝 Cấu trúc: <strong class="text-slate-700 dark:text-slate-200">${qCount} câu</strong> (${p1Count} TN, ${p2Count} Đ/S, ${p3Count} Điền số)</span>
             </div>
             <div class="flex items-center space-x-1.5">
               <span>📅 Hạn nộp: <span class="text-slate-700 dark:text-slate-300 font-medium">${dueDateStr}</span></span>
@@ -221,34 +234,31 @@ const StudentDashboard = {
             <div class="grid grid-cols-2 gap-2">
               <button
                 onclick="window.App.viewResult('${submission.id}')"
-                class="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-bold text-xs transition"
+                class="w-full py-2.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-bold text-xs transition text-center"
               >
-                Xem chi tiết & Lời giải
+                Xem lời giải
               </button>
-              ${exam.allowRetake > 1 ? `
-                <button
-                  onclick="window.App.startExam('${exam.id}')"
-                  class="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition"
-                >
-                  Làm lại bài
-                </button>
-              ` : `
-                <button disabled class="w-full py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 font-bold text-xs cursor-not-allowed">
-                  Đã hoàn thành
-                </button>
-              `}
+              <button
+                onclick="window.App.startExam('${exam.id}')"
+                class="w-full py-2.5 px-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition text-center"
+              >
+                Làm lại bài
+              </button>
             </div>
           ` : (status === 'expired' ? `
-            <button disabled class="w-full py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-700/50 text-slate-400 font-bold text-xs cursor-not-allowed">
-              Không thể vào thi (Hết hạn)
+            <button
+              onclick="window.App.startExam('${exam.id}')"
+              class="w-full py-2.5 px-4 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition"
+            >
+              Luyện tập quá hạn
             </button>
           ` : `
             <button
               onclick="window.App.startExam('${exam.id}')"
-              class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-[0.98] transition flex items-center justify-center space-x-1.5"
+              class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 active:scale-[0.98] transition flex items-center justify-center space-x-1.5"
             >
-              <span>Vào Làm Bài Thi</span>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              <span>Vào Làm Bài Thi Ngay</span>
+              <span>→</span>
             </button>
           `)}
         </div>
@@ -257,15 +267,15 @@ const StudentDashboard = {
   },
 
   _renderHistoryView(submissions, exams) {
-    if (submissions.length === 0) {
+    if (!submissions || submissions.length === 0) {
       return this._renderEmptyState('Chưa có lịch sử làm bài nào.');
     }
 
     const examMap = {};
-    exams.forEach(e => { examMap[e.id] = e; });
+    (exams || []).forEach(e => { examMap[e.id] = e; });
 
     return `
-      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 overflow-hidden shadow-sm">
+      <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/80 dark:border-slate-700/80 overflow-hidden shadow-sm">
         <div class="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/80 flex items-center justify-between">
           <h3 class="font-extrabold text-slate-900 dark:text-white text-base">
             Bảng Lịch Sử & Điểm Số Cá Nhân
@@ -318,12 +328,18 @@ const StudentDashboard = {
 
   _renderEmptyState(message) {
     return `
-      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-12 text-center">
-        <div class="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-3 text-2xl">
+      <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/80 dark:border-slate-700/80 p-10 text-center space-y-3">
+        <div class="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-2xl">
           📖
         </div>
-        <h4 class="text-base font-bold text-slate-800 dark:text-slate-200 mb-1">Chưa có bài kiểm tra nào</h4>
+        <h4 class="text-base font-bold text-slate-800 dark:text-slate-200">Bài kiểm tra Toán</h4>
         <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">${message}</p>
+        <button
+          onclick="window.StudentLogin.directDemoExam()"
+          class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md transition"
+        >
+          Vào thi thử bài mẫu chuẩn ngay →
+        </button>
       </div>
     `;
   },

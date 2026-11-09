@@ -204,12 +204,25 @@ const StudentManagement = {
 
   setClassFilter(c) {
     this.selectedClass = c;
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'students') {
+      window.AdminDashboard.switchTab('students');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   handleSearch(q) {
     this.searchQuery = q;
-    window.App.renderApp();
+    const query = q.toLowerCase();
+    const rows = document.querySelectorAll('#adminTabContainer tbody tr');
+    rows.forEach(tr => {
+      const text = tr.innerText.toLowerCase();
+      if (!query || text.includes(query)) {
+        tr.style.display = '';
+      } else {
+        tr.style.display = 'none';
+      }
+    });
   },
 
   openAddModal() {
@@ -238,7 +251,11 @@ const StudentManagement = {
 
     await DB.saveStudent(newStudent);
     document.getElementById('addStudentModal')?.classList.add('hidden');
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'students') {
+      window.AdminDashboard.switchTab('students');
+    } else {
+      window.App.renderApp();
+    }
   },
 
   async handleExcelUpload(event) {
@@ -260,7 +277,11 @@ const StudentManagement = {
       }
       await DB.saveStudentsBulk(result.students);
       alert(`Đã thêm thành công ${result.students.length} học sinh từ file Excel!`);
-      window.App.renderApp();
+      if (window.AdminDashboard && window.AdminDashboard.currentTab === 'students') {
+        window.AdminDashboard.switchTab('students');
+      } else {
+        window.App.renderApp();
+      }
     }
   },
 
@@ -274,7 +295,11 @@ const StudentManagement = {
       st.mustChangePassword = true;
       await DB.saveStudent(st);
       alert('Đã đặt lại mật khẩu thành công!');
-      window.App.renderApp();
+      if (window.AdminDashboard && window.AdminDashboard.currentTab === 'students') {
+        window.AdminDashboard.switchTab('students');
+      } else {
+        window.App.renderApp();
+      }
     }
   },
 
@@ -284,14 +309,22 @@ const StudentManagement = {
     if (st) {
       st.status = st.status === 'locked' ? 'active' : 'locked';
       await DB.saveStudent(st);
-      window.App.renderApp();
+      if (window.AdminDashboard && window.AdminDashboard.currentTab === 'students') {
+        window.AdminDashboard.switchTab('students');
+      } else {
+        window.App.renderApp();
+      }
     }
   },
 
   async deleteStudent(studentId) {
     if (!confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi hệ thống?')) return;
     await DB.deleteStudent(studentId);
-    window.App.renderApp();
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'students') {
+      window.AdminDashboard.switchTab('students');
+    } else {
+      window.App.renderApp();
+    }
   }
 };
 
