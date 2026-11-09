@@ -7,14 +7,14 @@ const StudentLogin = {
           
           <!-- Welcome Brand Card -->
           <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-500/30 mb-3 animate-bounce-once">
-              <span class="text-3xl font-black">∑</span>
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl shadow-xl shadow-blue-500/25 mb-3 overflow-hidden border-2 border-white dark:border-slate-700 bg-amber-50">
+              <img src="./assets/logo-thay-tung.jpg" alt="Toán thầy Tùng" class="w-full h-full object-cover" />
             </div>
             <h1 class="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-              Cổng Thi Trực Tuyến Azota
+              Toán Thầy Tùng
             </h1>
             <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Đăng nhập bằng tài khoản học sinh hoặc thử nghiệm nhanh bên dưới
+              Cổng Khảo sát & Kiểm tra Toán Trực tuyến Chuẩn GDPT 2018
             </p>
           </div>
 

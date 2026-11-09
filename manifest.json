@@ -1,13 +1,19 @@
 {
-  "name": "Azota Toán - Khảo Sát & Kiểm Tra Toán Trực Tuyến",
-  "short_name": "Azota Toán",
-  "description": "Ứng dụng thi và kiểm tra Toán trực tuyến chuẩn GDPT 2018, hỗ trợ công thức KaTeX và chống gian lận",
+  "name": "Toán Thầy Tùng - Khảo Sát & Kiểm Tra Toán Trực Tuyến",
+  "short_name": "Toán thầy Tùng",
+  "description": "Ứng dụng thi và kiểm tra Toán trực tuyến chuẩn GDPT 2018 - Thầy Tùng",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0f172a",
   "theme_color": "#2563eb",
   "icons": [
+    {
+      "src": "assets/logo-thay-tung.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
     {
       "src": "assets/icon-192.svg",
       "sizes": "192x192",

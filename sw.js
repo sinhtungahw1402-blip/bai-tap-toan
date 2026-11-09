@@ -1,9 +1,10 @@
-// Azota Toán - Service Worker (PWA Offline Cache & Install)
-const CACHE_NAME = 'azota-toan-v1.4';
+// Toán Thầy Tùng - Service Worker (PWA Offline Cache & Install)
+const CACHE_NAME = 'toan-thay-tung-v1.5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
+  './assets/logo-thay-tung.jpg',
   './assets/favicon.svg',
   './assets/icon-192.svg',
   './assets/icon-512.svg',

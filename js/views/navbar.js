@@ -12,18 +12,10 @@ const Navbar = {
             
             <!-- Logo & Brand -->
             <div class="flex items-center space-x-3 cursor-pointer" onclick="window.App.navigateTo('${isAdmin ? 'admin-dashboard' : (isStudent ? 'student-dashboard' : 'home')}')">
-              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 19h16"/>
-                  <path d="M4 5h16"/>
-                  <path d="M12 5v14"/>
-                  <path d="m9 9 6 6"/>
-                  <path d="m15 9-6 6"/>
-                </svg>
-              </div>
+              <img src="./assets/logo-thay-tung.jpg" alt="Logo Toán thầy Tùng" class="w-10 h-10 rounded-xl object-cover shadow-md shadow-blue-500/20 border border-slate-200 dark:border-slate-700" />
               <div>
                 <div class="flex items-center space-x-2">
-                  <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">Azota Toán</span>
+                  <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">Toán thầy Tùng</span>
                   <span class="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">PWA</span>
                 </div>
                 <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-none">Khảo sát & Kiểm tra Toán Chuẩn 2018</p>

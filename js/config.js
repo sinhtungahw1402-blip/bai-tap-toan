@@ -1,6 +1,6 @@
-// Azota Toán - Configuration & Constants
+// Toán thầy Tùng - Configuration & Constants
 const APP_CONFIG = {
-  APP_NAME: 'Azota Toán',
+  APP_NAME: 'Toán thầy Tùng',
   VERSION: '1.0.0',
   DEFAULT_SCALE: 10,
   
