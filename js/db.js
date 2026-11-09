@@ -55,6 +55,39 @@ const DB = {
         adminConfig: localData ? localData.adminConfig : null
       };
       localStorage.setItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB, JSON.stringify(initialDb));
+    } else {
+      // Tự động đồng bộ và bổ sung học sinh mới từ SampleData (87 học sinh) vào CSDL máy hiện tại
+      let modified = false;
+      if (Array.isArray(localData.students) && Array.isArray(SampleData.students)) {
+        const existingMap = new Map();
+        localData.students.forEach(s => {
+          if (s.username) existingMap.set(s.username.toLowerCase(), s);
+        });
+
+        SampleData.students.forEach(s => {
+          const u = (s.username || '').toLowerCase();
+          if (!existingMap.has(u)) {
+            localData.students.push(s);
+            existingMap.set(u, s);
+            modified = true;
+          }
+        });
+      }
+
+      // Đảm bảo đề thi mở cho tất cả các lớp của trường
+      if (Array.isArray(localData.exams)) {
+        localData.exams.forEach(ex => {
+          if (!ex.assignedClasses || ex.assignedClasses.length === 0 || !ex.assignedClasses.includes('LỚP 10')) {
+            ex.assignedClasses = ['LỚP 9', 'LỚP 10', 'LỚP 11', 'LỚP 12', '12A1', '12A2'];
+            modified = true;
+          }
+        });
+      }
+
+      if (modified) {
+        console.log(`[DB] Đã cập nhật CSDL cục bộ: ${localData.students.length} học sinh`);
+        localStorage.setItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB, JSON.stringify(localData));
+      }
     }
   },
 

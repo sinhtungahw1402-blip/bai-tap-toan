@@ -90,38 +90,38 @@ const StudentLogin = {
             <!-- Quick Test Accounts Helper -->
             <div class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-700/60">
               <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2.5 flex items-center justify-between">
-                <span>⚡ Chọn nhanh tài khoản mẫu:</span>
+                <span>⚡ Chọn nhanh tài khoản thi thử:</span>
                 <span class="text-[10px] text-blue-600 dark:text-blue-400">Pass: 123456</span>
               </p>
               <div class="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onclick="window.StudentLogin.fillAndLogin('tranminh', '123456')"
+                  onclick="window.StudentLogin.fillAndLogin('vhgn10', '123456')"
                   class="p-2.5 text-left rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-slate-700/60 dark:hover:bg-slate-700 border border-blue-200/60 dark:border-slate-600 transition"
-                  title="Chưa làm bài"
+                  title="Võ Hồng Gia Nghi - LỚP 10"
                 >
-                  <div class="text-xs font-bold text-blue-700 dark:text-blue-300 truncate">Trần Minh</div>
-                  <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Chưa làm bài</div>
+                  <div class="text-xs font-bold text-blue-700 dark:text-blue-300 truncate">Gia Nghi</div>
+                  <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Lớp 10</div>
                 </button>
 
                 <button
                   type="button"
-                  onclick="window.StudentLogin.fillAndLogin('nguyenan', '123456')"
+                  onclick="window.StudentLogin.fillAndLogin('vptt10', '123456')"
                   class="p-2.5 text-left rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/40 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 transition"
-                  title="Đã nộp bài điểm 10.0"
+                  title="Võ Phan Thanh Trúc - LỚP 10"
                 >
-                  <div class="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">Văn An</div>
-                  <div class="text-[10px] text-slate-500 dark:text-slate-400">Đạt 10.0đ</div>
+                  <div class="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">Thanh Trúc</div>
+                  <div class="text-[10px] text-slate-500 dark:text-slate-400">Lớp 10</div>
                 </button>
 
                 <button
                   type="button"
-                  onclick="window.StudentLogin.fillAndLogin('lehoa', '123456')"
+                  onclick="window.StudentLogin.fillAndLogin('ptd10', '123456')"
                   class="p-2.5 text-left rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/40 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 transition"
-                  title="Đã nộp bài điểm 6.75"
+                  title="Phan Tuấn Đạt - LỚP 10"
                 >
-                  <div class="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">Thị Hoa</div>
-                  <div class="text-[10px] text-slate-500 dark:text-slate-400">Đạt 6.75đ</div>
+                  <div class="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">Tuấn Đạt</div>
+                  <div class="text-[10px] text-slate-500 dark:text-slate-400">Lớp 10</div>
                 </button>
               </div>
             </div>
@@ -205,7 +205,7 @@ const StudentLogin = {
       const student = await DB.getStudentByUsername(username);
       if (!student) {
         if (errorBox) {
-          errorBox.textContent = `Tên đăng nhập "${username}" không tồn tại! Hãy thử chọn 1 trong 3 bạn ở dưới.`;
+          errorBox.textContent = `Tên đăng nhập "${username}" không tồn tại trong danh sách học sinh! Vui lòng kiểm tra lại chính xác tên đăng nhập hoặc liên hệ Thầy Tùng.`;
           errorBox.classList.remove('hidden');
         }
         return;
@@ -298,10 +298,10 @@ const StudentLogin = {
     const exams = await DB.getExams(null, 'admin');
     const targetExam = exams[0] || SampleData.exams[0];
     const students = await DB.getStudents();
-    const demoStudent = students.find(s => s.username === 'tranminh') || students[0] || {
-      id: 'hs_demo',
-      name: 'Học sinh thử nghiệm',
-      class: '12A1'
+    const demoStudent = students.find(s => s.username === 'vhgn10') || students[0] || {
+      id: 'hs_001',
+      name: 'Võ Hồng Gia Nghi',
+      class: 'LỚP 10'
     };
 
     window.App.currentUser = { role: 'student', ...demoStudent };
