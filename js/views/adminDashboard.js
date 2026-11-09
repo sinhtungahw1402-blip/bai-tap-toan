@@ -33,6 +33,14 @@ const AdminDashboard = {
             <!-- Firebase Connection & System Config Actions -->
             <div class="flex items-center flex-wrap gap-2">
               <button
+                onclick="window.AdminDashboard.openPairPhoneModal()"
+                class="px-3.5 py-2 rounded-xl bg-white/25 hover:bg-white/35 backdrop-blur-md text-white font-bold text-xs transition flex items-center space-x-1.5 shadow-sm ring-1 ring-white/30"
+                title="Ủy quyền và đồng bộ tài khoản quản trị sang điện thoại duy nhất của bạn"
+              >
+                <span>📱 Đồng Bộ Điện Thoại</span>
+              </button>
+
+              <button
                 onclick="window.AdminDashboard.openFirebaseModal()"
                 class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-bold text-xs transition flex items-center space-x-1.5"
               >
@@ -119,6 +127,67 @@ const AdminDashboard = {
                 Lưu & Kết Nối Cloud
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Ghép Nối & Đồng Bộ Điện Thoại Quản Trị Viên -->
+      <div id="pairPhoneModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <h3 class="font-black text-base text-slate-900 dark:text-white flex items-center space-x-2">
+              <span>📱 Ghép Nối Điện Thoại Quản Trị</span>
+            </h3>
+            <button onclick="document.getElementById('pairPhoneModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
+          </div>
+
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Hệ thống cho phép bạn sử dụng tài khoản Quản trị trên <strong>cả Máy tính này và 1 Điện thoại duy nhất của bạn</strong>. Bất kỳ máy lạ nào khác vẫn sẽ bị chặn.
+          </p>
+
+          <!-- QR Code Section -->
+          <div class="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+              📸 Mở Camera điện thoại quét mã QR bên dưới:
+            </span>
+            <div class="bg-white p-2.5 rounded-2xl shadow-sm border border-slate-200">
+              <img id="pairPhoneQrImg" src="" alt="Mã QR Ghép Nối Điện Thoại" class="w-44 h-44 object-contain" />
+            </div>
+            <span class="text-[11px] text-slate-400 mt-2 text-center">
+              Sau khi quét, điện thoại sẽ tự động nhận quyền Quản trị và đồng bộ dữ liệu ngay lập tức.
+            </span>
+          </div>
+
+          <!-- Link Share Section -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Hoặc gửi link sang điện thoại qua Zalo (Cloud của tôi):
+            </label>
+            <div class="flex space-x-2">
+              <input
+                id="pairPhoneLinkInput"
+                type="text"
+                readonly
+                class="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 outline-none"
+              />
+              <button
+                type="button"
+                onclick="window.AdminDashboard.copyPairLink()"
+                class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shrink-0"
+              >
+                Sao Chép Link
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-2 text-right">
+            <button
+              type="button"
+              onclick="document.getElementById('pairPhoneModal').classList.add('hidden')"
+              class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
+            >
+              Đóng
+            </button>
           </div>
         </div>
       </div>
@@ -308,6 +377,57 @@ const AdminDashboard = {
     if (confirm('Xác nhận xóa cấu hình Firebase và chuyển về CSDL cục bộ?')) {
       localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG);
       location.reload();
+    }
+  },
+
+  async openPairPhoneModal() {
+    const adminConfig = await DB.getAdminConfig();
+    if (!adminConfig) {
+      alert('Chưa khởi tạo tài khoản quản trị!');
+      return;
+    }
+
+    const firebaseConfigStr = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG) || '';
+    const localDbStr = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB) || '';
+
+    // Tạo gói xác thực ủy quyền thiết bị an toàn
+    const payload = {
+      action: 'PAIR_PHONE',
+      adminConfig: {
+        isInitialized: true,
+        adminPasswordHash: adminConfig.adminPasswordHash,
+        registeredDeviceHash: adminConfig.registeredDeviceHash,
+        registeredDeviceHashes: adminConfig.registeredDeviceHashes || [adminConfig.registeredDeviceHash],
+        recoveryCodeHash: adminConfig.recoveryCodeHash,
+        recoveryCodeUsed: adminConfig.recoveryCodeUsed || false
+      },
+      firebaseConfig: firebaseConfigStr,
+      localDb: localDbStr,
+      timestamp: Date.now()
+    };
+
+    const jsonStr = JSON.stringify(payload);
+    const encoded = btoa(encodeURIComponent(jsonStr));
+    const pairUrl = `${window.location.origin}${window.location.pathname}#pair=${encoded}`;
+
+    const qrImg = document.getElementById('pairPhoneQrImg');
+    if (qrImg) {
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(pairUrl)}`;
+    }
+    const input = document.getElementById('pairPhoneLinkInput');
+    if (input) {
+      input.value = pairUrl;
+    }
+
+    document.getElementById('pairPhoneModal').classList.remove('hidden');
+  },
+
+  copyPairLink() {
+    const input = document.getElementById('pairPhoneLinkInput');
+    if (input) {
+      input.select();
+      navigator.clipboard.writeText(input.value);
+      alert('Đã sao chép link đồng bộ vào bộ nhớ đệm!\n\nThầy/Cô hãy gửi link này qua Zalo (Cloud của tôi) và mở trên điện thoại để hoàn tất đồng bộ.');
     }
   },
 

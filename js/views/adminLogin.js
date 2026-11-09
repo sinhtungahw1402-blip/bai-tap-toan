@@ -20,7 +20,7 @@ const AdminLogin = {
           <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/80 dark:border-slate-700/80 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none space-y-5">
             
             <!-- Switch Tabs -->
-            <div class="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-900">
+            <div class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-900">
               <button
                 onclick="window.AdminLogin.switchTab('login')"
                 class="py-2 rounded-xl text-xs font-bold transition ${
@@ -32,6 +32,16 @@ const AdminLogin = {
                 🔑 Đăng Nhập
               </button>
               <button
+                onclick="window.AdminLogin.switchTab('pair')"
+                class="py-2 rounded-xl text-xs font-bold transition ${
+                  this.activeTab === 'pair'
+                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                }"
+              >
+                📱 Ghép Nối
+              </button>
+              <button
                 onclick="window.AdminLogin.switchTab('recover')"
                 class="py-2 rounded-xl text-xs font-bold transition ${
                   this.activeTab === 'recover'
@@ -39,7 +49,7 @@ const AdminLogin = {
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
                 }"
               >
-                🔄 Đổi Máy / Khôi Phục
+                🔄 Khôi Phục
               </button>
             </div>
 
@@ -67,6 +77,40 @@ const AdminLogin = {
                   class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-sm shadow-lg shadow-amber-500/25 transition active:scale-98"
                 >
                   Xác Thực & Vào Quản Trị
+                </button>
+              </form>
+            ` : (this.activeTab === 'pair' ? `
+              <!-- Tab 2: Pair Phone -->
+              <form onsubmit="window.AdminLogin.handlePairInput(event)" class="space-y-4">
+                <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                  <div class="font-bold flex items-center space-x-1">
+                    <span>📱 Ghép nối Điện thoại Quản trị:</span>
+                  </div>
+                  <p class="text-[11px] text-amber-700 dark:text-amber-300">
+                    Trên máy tính, vào <strong>Bảng Quản Trị &gt; 📱 Đồng Bộ Điện Thoại</strong>. Bạn có thể mở camera quét mã QR, hoặc sao chép link dán vào ô bên dưới:
+                  </p>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Dán Link hoặc Mã Ghép Nối từ Máy Tính
+                  </label>
+                  <textarea
+                    id="pairInputText"
+                    required
+                    rows="3"
+                    placeholder="Dán link gửi qua Zalo (ví dụ: https://...#pair=...) vào đây"
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-xs font-mono outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-white"
+                  ></textarea>
+                </div>
+
+                <div id="pairErrorBox" class="hidden p-3 rounded-xl bg-red-50 text-red-600 text-xs font-semibold"></div>
+
+                <button
+                  type="submit"
+                  class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-sm shadow-md transition"
+                >
+                  Xác Nhận & Đồng Bộ Thiết Bị Này
                 </button>
               </form>
             ` : `
@@ -178,6 +222,28 @@ const AdminLogin = {
     // Đăng nhập thành công!
     await DB.saveAdminConfig({ lastLoginAt: new Date().toISOString() });
     window.App.loginAsAdmin();
+  },
+
+  async handlePairInput(event) {
+    event.preventDefault();
+    const rawInput = document.getElementById('pairInputText').value.trim();
+    const errBox = document.getElementById('pairErrorBox');
+    errBox.classList.add('hidden');
+
+    if (!rawInput) return;
+
+    let hash = rawInput;
+    if (rawInput.includes('#pair=')) {
+      hash = '#' + rawInput.split('#')[1];
+    } else if (!rawInput.startsWith('#pair=')) {
+      hash = '#pair=' + rawInput;
+    }
+
+    const success = await window.App.handlePhonePairing(hash);
+    if (!success) {
+      errBox.textContent = 'Mã hoặc link ghép nối không hợp lệ! Vui lòng kiểm tra lại link sao chép từ máy tính.';
+      errBox.classList.remove('hidden');
+    }
   },
 
   async handleRecover(event) {

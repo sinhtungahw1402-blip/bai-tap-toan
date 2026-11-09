@@ -148,6 +148,7 @@ const DeviceSecurity = {
       isInitialized: true,
       adminPasswordHash: passwordHash,
       registeredDeviceHash: deviceHash,
+      registeredDeviceHashes: [deviceHash],
       recoveryCodeHash: recoveryHash,
       recoveryCodeUsed: false,
       failedAttempts: 0,
@@ -160,7 +161,7 @@ const DeviceSecurity = {
     return { adminConfig, recoveryCode };
   },
 
-  // Xác thực đăng nhập quản trị (Mật khẩu + Thiết bị duy nhất + Khóa tạm thời)
+  // Xác thực đăng nhập quản trị (Mật khẩu + Thiết bị tin cậy Máy tính & Điện thoại + Khóa tạm thời)
   async verifyAdminLogin(password, adminConfig) {
     const now = Date.now();
 
@@ -194,14 +195,20 @@ const DeviceSecurity = {
       };
     }
 
-    // 3. KIỂM TRA THIẾT BỊ DUY NHẤT (QUAN TRỌNG)
+    // 3. KIỂM TRA THIẾT BỊ TIN CẬY (MÁY TÍNH & ĐIỆN THOẠI DUY NHẤT)
     const currentDeviceToken = this.getDeviceToken();
     const currentDeviceHash = await this.sha256(currentDeviceToken);
 
-    if (currentDeviceHash !== adminConfig.registeredDeviceHash) {
+    // Lấy danh sách các mã băm thiết bị được ủy quyền
+    const trustedHashes = adminConfig.registeredDeviceHashes || [];
+    if (adminConfig.registeredDeviceHash && !trustedHashes.includes(adminConfig.registeredDeviceHash)) {
+      trustedHashes.push(adminConfig.registeredDeviceHash);
+    }
+
+    if (!trustedHashes.includes(currentDeviceHash)) {
       return {
         success: false,
-        error: '🚫 THIẾT BỊ BỊ CHẶN: Dù đúng mật khẩu, thiết bị này CHƯA ĐƯỢC ỦY QUYỀN! Hệ thống chỉ cho phép 1 thiết bị duy nhất của quản trị viên. Nếu bạn đã đổi máy, vui lòng sử dụng "Mã khôi phục" để chuyển quyền.',
+        error: '🚫 THIẾT BỊ BỊ CHẶN: Dù đúng mật khẩu, thiết bị này CHƯA ĐƯỢC ỦY QUYỀN! Hệ thống chỉ cho phép thiết bị tin cậy của Quản trị viên (Máy tính và Điện thoại chính chủ). Để đồng bộ điện thoại, vui lòng quét mã QR từ bảng quản trị máy tính hoặc dùng "Mã khôi phục".',
         isUnauthorizedDevice: true
       };
     }
@@ -212,6 +219,21 @@ const DeviceSecurity = {
       failedAttempts: 0,
       lockedUntil: null
     };
+  },
+
+  // Ủy quyền thêm thiết bị tin cậy thứ 2 (Điện thoại cá nhân của bạn)
+  async authorizeAdditionalDevice(adminConfig, phoneDeviceToken) {
+    const phoneHash = await this.sha256(phoneDeviceToken);
+    const hashes = adminConfig.registeredDeviceHashes || [];
+    if (adminConfig.registeredDeviceHash && !hashes.includes(adminConfig.registeredDeviceHash)) {
+      hashes.push(adminConfig.registeredDeviceHash);
+    }
+    if (!hashes.includes(phoneHash)) {
+      hashes.push(phoneHash);
+    }
+    adminConfig.registeredDeviceHashes = hashes;
+    adminConfig.phoneAuthorizedAt = new Date().toISOString();
+    return adminConfig;
   },
 
   // Chuyển quyền sang thiết bị mới bằng Mã khôi phục 1 lần

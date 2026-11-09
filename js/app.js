@@ -31,6 +31,12 @@ const App = {
       console.warn('[App] Lỗi init DB:', e);
     }
 
+    // 3.5. Kiểm tra liên kết ghép nối điện thoại quản trị viên (nếu có hash #pair=)
+    if (window.location.hash && window.location.hash.includes('pair=')) {
+      const paired = await this.handlePhonePairing(window.location.hash);
+      if (paired) return;
+    }
+
     // 4. Khôi phục phiên đăng nhập
     try {
       const savedAdmin = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION);
@@ -218,6 +224,60 @@ const App = {
 
   viewResult(submissionId) {
     this.navigateTo('exam-result', submissionId);
+  },
+
+  async handlePhonePairing(hash) {
+    try {
+      const match = hash.match(/pair=([^&]+)/);
+      if (!match) return false;
+
+      const raw = decodeURIComponent(match[1]);
+      const jsonStr = decodeURIComponent(atob(raw));
+      const payload = JSON.parse(jsonStr);
+
+      if (payload.action !== 'PAIR_PHONE' || !payload.adminConfig) {
+        alert('Mã ghép nối không hợp lệ!');
+        return false;
+      }
+
+      console.log('[App] Đang tiến hành ghép nối thiết bị điện thoại...');
+
+      // 1. Lấy token thiết bị của điện thoại hiện tại
+      const phoneToken = DeviceSecurity.getDeviceToken();
+      const updatedAdminConfig = await DeviceSecurity.authorizeAdditionalDevice(payload.adminConfig, phoneToken);
+
+      // 2. Lưu cấu hình quản trị mới đã ủy quyền cho điện thoại
+      await DB.saveAdminConfig(updatedAdminConfig);
+
+      // 3. Nếu máy tính đã có cấu hình Firebase, tự động truyền sang điện thoại
+      if (payload.firebaseConfig) {
+        localStorage.setItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG, payload.firebaseConfig);
+        await DB.init();
+      } else if (payload.localDb) {
+        // Đồng bộ dữ liệu CSDL cục bộ sang điện thoại
+        try {
+          localStorage.setItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB, payload.localDb);
+        } catch (e) {}
+      }
+
+      // 4. Kích hoạt phiên đăng nhập Quản trị viên trên điện thoại
+      this.currentUser = { role: 'admin', name: 'Quản trị viên' };
+      localStorage.setItem(APP_CONFIG.STORAGE_KEYS.ADMIN_SESSION, 'true');
+      localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
+
+      // 5. Xóa mã ghép nối khỏi URL để bảo mật
+      history.replaceState(null, '', window.location.pathname);
+
+      alert('🎉 ĐỒNG BỘ THÀNH CÔNG!\n\nĐiện thoại này đã được xác thực là Thiết Bị Quản Trị Viên Tin Cậy.\nBây giờ Thầy/Cô có thể quản lý đề thi và xem thống kê trên cả Máy tính và Điện thoại của mình!');
+
+      this.currentView = 'admin-dashboard';
+      await this.renderApp();
+      return true;
+    } catch (err) {
+      console.error('[App] Lỗi ghép nối thiết bị:', err);
+      alert('Không thể hoàn tất ghép nối: ' + err.message);
+      return false;
+    }
   },
 
   toggleDarkMode() {
