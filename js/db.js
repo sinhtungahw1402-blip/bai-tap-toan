@@ -5,34 +5,68 @@ const DB = {
 
   // Khởi tạo Database
   async init() {
-    // 1. Kiểm tra cấu hình Firebase tùy chỉnh lưu trong máy
+    // 1. Kiểm tra cấu hình Firebase: ưu tiên cấu hình tùy chỉnh máy Admin, sau đó cấu hình mặc định toàn trường trong APP_CONFIG
     try {
+      let config = null;
       const customConfigStr = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG);
       if (customConfigStr) {
-        const config = JSON.parse(customConfigStr);
-        if (config.apiKey && config.projectId && typeof firebase !== 'undefined') {
-          if (!firebase.apps.length) {
-            firebase.initializeApp(config);
-          }
-          this.firestore = firebase.firestore();
-          this.isFirebaseActive = true;
-          console.log('[DB] Kết nối Firebase Firestore thành công!');
+        try { config = JSON.parse(customConfigStr); } catch (e) {}
+      }
+      if (!config && APP_CONFIG.FIREBASE_CONFIG && APP_CONFIG.FIREBASE_CONFIG.apiKey) {
+        config = APP_CONFIG.FIREBASE_CONFIG;
+      }
 
-          // Tự động kiểm tra nếu Cloud chưa có dữ liệu thì đẩy dữ liệu cục bộ lên Cloud
-          try {
-            const snap = await this.firestore.collection('students').limit(1).get();
-            if (snap.empty) {
-              const local = this._getLocal();
-              if (local && local.students && local.students.length > 0) {
-                console.log(`[DB] Đang tự động tải ${local.students.length} học sinh và đề thi lên Firebase Cloud...`);
-                await this.syncLocalToFirestore(local);
-              }
-            }
-          } catch (e) {
-            console.warn('[DB] Lưu ý khi kiểm tra dữ liệu Cloud:', e);
-          }
-          return;
+      if (config && config.apiKey && config.projectId && typeof firebase !== 'undefined') {
+        if (!firebase.apps || !firebase.apps.length) {
+          firebase.initializeApp(config);
         }
+        this.firestore = firebase.firestore();
+        this.isFirebaseActive = true;
+        console.log('[DB] Kết nối Firebase Firestore Cloud thành công cho toàn trường!');
+
+        // Tự động kiểm tra nếu Cloud chưa có dữ liệu thì đẩy dữ liệu cục bộ lên Cloud
+        try {
+          const snapCheck = await this.firestore.collection('students').limit(1).get();
+          if (snapCheck.empty) {
+            const local = this._getLocal();
+            if (local && local.students && local.students.length > 0) {
+              console.log(`[DB] Đang tự động tải ${local.students.length} học sinh và đề thi lên Firebase Cloud...`);
+              await this.syncLocalToFirestore(local);
+            }
+          }
+        } catch (e) {
+          console.warn('[DB] Lưu ý khi kiểm tra dữ liệu Cloud:', e);
+        }
+
+        // Đồng bộ dữ liệu mới nhất từ Cloud về Local Cache của thiết bị
+        try {
+          // A. Đồng bộ Đề thi từ Cloud
+          const snapExams = await this.firestore.collection('exams').get();
+          if (!snapExams.empty) {
+            const cloudExams = snapExams.docs.map(d => ({ id: d.id, ...d.data() }));
+            const local = this._getLocal();
+            local.exams = cloudExams;
+            // Xóa bỏ các bài nộp mẫu cũ nếu có
+            if (local.submissions && local.submissions.some(s => s.examId === 'exam_sample_12hk1')) {
+              local.submissions = local.submissions.filter(s => s.examId !== 'exam_sample_12hk1');
+            }
+            this._saveLocal(local);
+            console.log(`[DB] Đã đồng bộ ${cloudExams.length} đề thi mới từ Firebase Cloud!`);
+          }
+
+          // B. Đồng bộ Học sinh từ Cloud
+          const snapStudents = await this.firestore.collection('students').get();
+          if (!snapStudents.empty) {
+            const cloudStudents = snapStudents.docs.map(d => ({ id: d.id, ...d.data() }));
+            const local = this._getLocal();
+            local.students = cloudStudents;
+            this._saveLocal(local);
+          }
+        } catch (syncErr) {
+          console.warn('[DB] Lưu ý khi đồng bộ Cloud về máy:', syncErr);
+        }
+
+        return;
       }
     } catch (err) {
       console.warn('[DB] Lỗi khởi động Firebase, chuyển sang chế độ cục bộ:', err);
@@ -252,14 +286,22 @@ const DB = {
   // ================= ĐỀ KIỂM TRA (EXAMS) =================
   async getExams(studentClass = null, role = 'admin') {
     let allExams = [];
+    let cloudLoaded = false;
     if (this.isFirebaseActive && this.firestore) {
       try {
         const snap = await this.firestore.collection('exams').get();
-        if (!snap.empty) allExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch (e) {}
+        allExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cloudLoaded = true;
+        // Cập nhật bộ nhớ đệm cục bộ
+        const db = this._getLocal();
+        db.exams = allExams;
+        this._saveLocal(db);
+      } catch (e) {
+        console.warn('[DB] Lỗi tải đề từ Cloud:', e);
+      }
     }
 
-    if (allExams.length === 0) {
+    if (!cloudLoaded) {
       const db = this._getLocal();
       allExams = db.exams || [];
     }
@@ -267,11 +309,19 @@ const DB = {
     // Nếu là học sinh: lọc bài phù hợp và loại bỏ đáp án đúng
     if (role === 'student') {
       if (studentClass) {
-        allExams = allExams.filter(ex => 
-          !ex.assignedClasses || 
-          ex.assignedClasses.length === 0 || 
-          ex.assignedClasses.includes(studentClass)
-        );
+        allExams = allExams.filter(ex => {
+          // 1. Không giới hạn lớp hoặc mảng rỗng -> cho phép toàn trường
+          if (!ex.assignedClasses || ex.assignedClasses.length === 0) return true;
+          // 2. Trực tiếp có tên lớp của học sinh (ví dụ "LỚP 10", "12A1")
+          if (ex.assignedClasses.includes(studentClass)) return true;
+          // 3. Khớp khối (ví dụ đề gán "Khối 10" và học sinh thuộc lớp "LỚP 10" hoặc "10A1")
+          const cleanGroup = (ex.classGroup || '').replace(/khối\s*/i, '').trim();
+          const cleanClass = studentClass.replace(/lớp\s*/i, '').trim();
+          if (cleanGroup && cleanClass && (cleanClass.startsWith(cleanGroup) || cleanGroup.startsWith(cleanClass))) {
+            return true;
+          }
+          return false;
+        });
       }
       return allExams.map(ex => GradingEngine.stripAnswersForStudent(ex));
     }
@@ -343,24 +393,23 @@ const DB = {
 
   // ================= BÀI NỘP (SUBMISSIONS) =================
   async getSubmissions(examId = null, studentId = null) {
-    let allSubs = [];
     if (this.isFirebaseActive && this.firestore) {
       try {
         let query = this.firestore.collection('submissions');
         if (examId) query = query.where('examId', '==', examId);
         if (studentId) query = query.where('studentId', '==', studentId);
         const snap = await query.get();
-        allSubs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch (e) {}
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn('[DB] Lỗi tải bài nộp từ Firestore:', e);
+      }
     }
 
-    if (allSubs.length === 0) {
-      const db = this._getLocal();
-      allSubs = db.submissions || [];
-      if (examId) allSubs = allSubs.filter(s => s.examId === examId);
-      if (studentId) allSubs = allSubs.filter(s => s.studentId === studentId);
-    }
-
+    // Fallback cục bộ (chỉ khi offline hoặc chưa kết nối Firebase)
+    const db = this._getLocal();
+    let allSubs = db.submissions || [];
+    if (examId) allSubs = allSubs.filter(s => s.examId === examId);
+    if (studentId) allSubs = allSubs.filter(s => s.studentId === studentId);
     return allSubs;
   },
 

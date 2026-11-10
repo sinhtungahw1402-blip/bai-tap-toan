@@ -23,6 +23,16 @@ const APP_CONFIG = {
     4: 1.0
   },
 
+  // Cấu hình Firebase Cloud dùng chung cho toàn trường (Đồng bộ mọi thiết bị học sinh và giáo viên)
+  FIREBASE_CONFIG: {
+    apiKey: "AIzaSyDEecI0Ss5Oe7Ynbi4Te0KGuM9LXQiuJDw",
+    authDomain: "bai-tap-toan.firebaseapp.com",
+    projectId: "bai-tap-toan",
+    storageBucket: "bai-tap-toan.firebasestorage.app",
+    messagingSenderId: "198176069137",
+    appId: "1:198176069137:web:ee846c1ee606b4732d03b0"
+  },
+
   // Key lưu trữ cục bộ
   STORAGE_KEYS: {
     STUDENT_SESSION: 'azota_student_session',

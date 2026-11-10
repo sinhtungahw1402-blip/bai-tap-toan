@@ -960,596 +960,354 @@ const SampleData = {
   ],
   "exams": [
     {
-      "id": "exam_sample_12hk1",
-      "title": "Đề Khảo Sát Toán 12 - Học Kỳ 1 (Chuẩn GDPT 2018)",
-      "classGroup": "Khối 12",
-      "assignedClasses": [
-        "LỚP 9",
-        "LỚP 10",
-        "LỚP 11",
-        "LỚP 12",
-        "12A1",
-        "12A2"
-      ],
-      "durationMinutes": 45,
-      "scale": 10,
-      "allowRetake": 2,
-      "shuffleQuestions": true,
-      "shuffleChoices": true,
-      "viewScoreMode": "immediate",
-      "viewAnswerMode": "immediate",
-      "openTime": "2026-11-09T02:27:05.739Z",
-      "dueTime": "2026-11-17T02:27:05.740Z",
-      "antiCheat": {
-        "maxTabSwitches": 3,
-        "autoSubmitOnExcess": true,
-        "disableContextMenu": true,
-        "disableCopy": true
-      },
-      "questions": [
-        {
-          "id": "q1",
-          "part": 1,
-          "questionNumber": 1,
-          "content": "Cho hàm số $y = f(x)$ có bảng biến thiên dưới đây. Điểm cực đại của đồ thị hàm số là:\n$f'(x)$ đổi dấu từ dương sang âm tại $x = 1$, với $f(1) = 3$.",
-          "options": [
+        "allowRetake": 1,
+        "shuffleQuestions": true,
+        "viewAnswerMode": "immediate",
+        "shuffleChoices": true,
+        "durationMinutes": 30,
+        "id": "exam_1794279755901",
+        "viewScoreMode": "immediate",
+        "questions": [
             {
-              "id": "A",
-              "text": "$x = 1$"
+                "id": "q_1794279694207_1",
+                "part": 1,
+                "questionNumber": 1,
+                "content": "Điền từ thích hợp vào dấu (...) để được mệnh đề đúng: “Hai véc tơ ngược hướng thì (...)”.",
+                "image": "",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Bằng nhau."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Cùng phương."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Cùng độ dài."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Cùng điểm đầu."
+                    }
+                ],
+                "correctAnswer": "B",
+                "explanation": "Theo định nghĩa, hai vectơ ngược hướng thì luôn cùng phương với nhau. Chọn đáp án B.",
+                "points": 0.5
             },
             {
-              "id": "B",
-              "text": "$(1; 3)$"
+                "id": "q_1794279694207_2",
+                "part": 1,
+                "questionNumber": 2,
+                "content": "Cho hình bình hành $ABCD$. Véctơ tổng $\\vec{CB}+\\vec{CD}$ bằng",
+                "image": "",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "$\\vec{CA}$."
+                    },
+                    {
+                        "id": "B",
+                        "text": "$\\vec{BD}$."
+                    },
+                    {
+                        "id": "C",
+                        "text": "$\\vec{AC}$."
+                    },
+                    {
+                        "id": "D",
+                        "text": "$\\vec{DB}$."
+                    }
+                ],
+                "correctAnswer": "A",
+                "explanation": "Áp dụng quy tắc hình bình hành cho hình bình hành $ABCD$ tại đỉnh $C$, ta có $\\vec{CB}+\\vec{CD}=\\vec{CA}$. Chọn đáp án A.",
+                "points": 0.5
             },
             {
-              "id": "C",
-              "text": "$y = 3$"
+                "id": "q_1794279694207_3",
+                "part": 1,
+                "questionNumber": 3,
+                "content": "Cho ba điểm $M, N, P$ thẳng hàng, trong đó điểm $N$ nằm giữa hai điểm $M$ và $P$. Khi đó các cặp vectơ nào sau đây cùng hướng?",
+                "image": "",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "$\\vec{MP}$ và $\\vec{PN}$."
+                    },
+                    {
+                        "id": "B",
+                        "text": "$\\vec{MN}$ và $\\vec{PN}$."
+                    },
+                    {
+                        "id": "C",
+                        "text": "$\\vec{NM}$ và $\\vec{NP}$."
+                    },
+                    {
+                        "id": "D",
+                        "text": "$\\vec{MN}$ và $\\vec{MP}$."
+                    }
+                ],
+                "correctAnswer": "D",
+                "explanation": "Vì điểm $N$ nằm giữa hai điểm $M$ và $P$ nên hai tia $MN$ và $MP$ trùng nhau, suy ra hai vectơ $\\vec{MN}$ và $\\vec{MP}$ cùng hướng. Chọn đáp án D.",
+                "points": 0.5
             },
             {
-              "id": "D",
-              "text": "$(3; 1)$"
+                "id": "q_1794279694207_4",
+                "part": 1,
+                "questionNumber": 4,
+                "content": "Chọn khẳng định sai:",
+                "image": "",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Nếu $I$ là trung điểm đoạn $AB$ thì $\\vec{IA}-\\vec{IB}=\\vec{0}$."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Nếu $I$ là trung điểm đoạn $AB$ thì $\\vec{AI}-\\vec{BI}=\\vec{AB}$."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Nếu $I$ là trung điểm đoạn $AB$ thì $\\vec{AI}-\\vec{IB}=\\vec{0}$."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Nếu $I$ là trung điểm đoạn $AB$ thì $\\vec{IA}-\\vec{BI}=\\vec{0}$."
+                    }
+                ],
+                "correctAnswer": "A",
+                "explanation": "Vì $I$ là trung điểm đoạn $AB$ nên $\\vec{IA}+\\vec{IB}=\\vec{0}$, còn $\\vec{IA}-\\vec{IB}=\\vec{BA}\\neq\\vec{0}$. Do đó khẳng định A sai (B đúng vì $\\vec{AI}-\\vec{BI}=\\vec{AI}+\\vec{IB}=\\vec{AB}$; C đúng vì $\\vec{AI}=\\vec{IB}$; D đúng vì $\\vec{IA}-\\vec{BI}=\\vec{IA}+\\vec{IB}=\\vec{0}$).",
+                "points": 0.5
+            },
+            {
+                "id": "q_1794279694207_5",
+                "part": 1,
+                "questionNumber": 5,
+                "content": "Trên đường thẳng chứa cạnh $BC$ của tam giác $ABC$ lấy một điểm $M$ sao cho $\\vec{MB}=3\\vec{MC}$. Khi đó đẳng thức nào sau đây đúng?",
+                "image": "",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "$\\vec{AM}=-\\frac{1}{2}\\vec{AB}+\\frac{3}{2}\\vec{AC}$."
+                    },
+                    {
+                        "id": "B",
+                        "text": "$\\vec{AM}=2\\vec{AB}+\\vec{AC}$."
+                    },
+                    {
+                        "id": "C",
+                        "text": "$\\vec{AM}=\\vec{AB}-\\vec{AC}$."
+                    },
+                    {
+                        "id": "D",
+                        "text": "$\\vec{AM}=\\frac{1}{2}(\\vec{AB}+\\vec{AC})$."
+                    }
+                ],
+                "correctAnswer": "A",
+                "explanation": "Ta có $\\vec{MB}=3\\vec{MC} \\iff \\vec{AB}-\\vec{AM}=3(\\vec{AC}-\\vec{AM}) \\iff 2\\vec{AM}=-\\vec{AB}+3\\vec{AC} \\iff \\vec{AM}=-\\frac{1}{2}\\vec{AB}+\\frac{3}{2}\\vec{AC}$. Chọn đáp án A.",
+                "points": 0.5
+            },
+            {
+                "id": "q_1794279694207_6",
+                "part": 1,
+                "questionNumber": 6,
+                "content": "Cho hình chữ nhật $ABCD$ và $I$ là giao điểm của hai đường chéo. Tập hợp các điểm $M$ thỏa mãn $|\\vec{MA}+\\vec{MB}|=|\\vec{MC}+\\vec{MD}|$ là",
+                "image": "",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "trung trực của đoạn thẳng $AB$."
+                    },
+                    {
+                        "id": "B",
+                        "text": "trung trực của đoạn thẳng $AD$."
+                    },
+                    {
+                        "id": "C",
+                        "text": "đường tròn tâm $I$, bán kính $\\frac{AC}{2}$."
+                    },
+                    {
+                        "id": "D",
+                        "text": "đường tròn tâm $I$, bán kính $\\frac{AB+BC}{2}$."
+                    }
+                ],
+                "correctAnswer": "B",
+                "explanation": "Gọi $E, F$ lần lượt là trung điểm của $AB$ và $CD$. Khi đó $\\vec{MA}+\\vec{MB}=2\\vec{ME}$ và $\\vec{MC}+\\vec{MD}=2\\vec{MF}$. Suy ra $|2\\vec{ME}|=|2\\vec{MF}| \\iff ME=MF$. Tập hợp điểm $M$ là đường trung trực của $EF$, cũng chính là đường trung trực của đoạn thẳng $AD$. Chọn đáp án B.",
+                "points": 0.5
+            },
+            {
+                "id": "q_1794279694207_7",
+                "part": 1,
+                "questionNumber": 7,
+                "content": "Cho $\\triangle ABC$. Xác định điểm $M$ sao cho: $\\vec{MA}+2\\vec{MB}=\\vec{CB}$.",
+                "image": "",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "$M$ là trung điểm cạnh $AB$."
+                    },
+                    {
+                        "id": "B",
+                        "text": "$M$ là trung điểm cạnh $BC$."
+                    },
+                    {
+                        "id": "C",
+                        "text": "$M$ chia đoạn $AB$ theo tỉ số $2$."
+                    },
+                    {
+                        "id": "D",
+                        "text": "$M$ là trọng tâm $\\triangle ABC$."
+                    }
+                ],
+                "correctAnswer": "D",
+                "explanation": "Ta có $\\vec{MA}+2\\vec{MB}=\\vec{CB} \\iff \\vec{MA}+\\vec{MB}+(\\vec{MB}-\\vec{CB})=\\vec{0} \\iff \\vec{MA}+\\vec{MB}+\\vec{MC}=\\vec{0}$. Vậy $M$ là trọng tâm $\\triangle ABC$. Chọn đáp án D.",
+                "points": 0.5
+            },
+            {
+                "id": "q_1794279694207_8",
+                "part": 1,
+                "questionNumber": 8,
+                "content": "Cho tam giác $ABC$ đều cạnh $a$, có $AH$ là đường trung tuyến. Tính $|\\vec{AC}+\\vec{AH}|$.",
+                "image": "",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "$\\frac{a\\sqrt{3}}{2}$."
+                    },
+                    {
+                        "id": "B",
+                        "text": "$2a$."
+                    },
+                    {
+                        "id": "C",
+                        "text": "$\\frac{a\\sqrt{13}}{2}$."
+                    },
+                    {
+                        "id": "D",
+                        "text": "$a\\sqrt{3}$."
+                    }
+                ],
+                "correctAnswer": "C",
+                "explanation": "Gọi $I$ là trung điểm $HC$, ta có $HI=\\frac{a}{4}$ và $\\vec{AC}+\\vec{AH}=2\\vec{AI}$. Tam giác $AHI$ vuông tại $H$ có $AH=\\frac{a\\sqrt{3}}{2}$, suy ra $AI=\\sqrt{AH^2+HI^2}=\\sqrt{\\frac{3a^2}{4}+\\frac{a^2}{16}}=\\frac{a\\sqrt{13}}{4}$. Vậy $|\\vec{AC}+\\vec{AH}|=2AI=\\frac{a\\sqrt{13}}{2}$. Chọn đáp án C.",
+                "points": 0.5
+            },
+            {
+                "id": "q_1794279694207_9",
+                "part": 2,
+                "questionNumber": 9,
+                "content": "Cho tam giác $ABC$. Gọi $M, N, P$ lần lượt là trung điểm của các cạnh $BC, CA, AB$.",
+                "image": "",
+                "subItems": [
+                    {
+                        "id": "a",
+                        "text": "$\\vec{MN}=\\frac{1}{2}\\vec{AB}$.",
+                        "correct": false
+                    },
+                    {
+                        "id": "b",
+                        "text": "$\\vec{PM}=\\frac{1}{2}\\vec{AC}$.",
+                        "correct": true
+                    },
+                    {
+                        "id": "c",
+                        "text": "$\\vec{PN}=\\frac{1}{2}\\vec{BC}$.",
+                        "correct": true
+                    },
+                    {
+                        "id": "d",
+                        "text": "$\\vec{NM}=-2\\vec{AB}$.",
+                        "correct": false
+                    }
+                ],
+                "explanation": "Vì $M, N, P$ lần lượt là trung điểm của $BC, CA, AB$ nên $MN, PM, PN$ là các đường trung bình của $\\triangle ABC$. Ta có: a) Sai vì $\\vec{MN}=-\\frac{1}{2}\\vec{AB}$; b) Đúng vì $\\vec{PM}$ cùng hướng $\\vec{AC}$ và $PM=\\frac{1}{2}AC$; c) Đúng vì $\\vec{PN}$ cùng hướng $\\vec{BC}$ và $PN=\\frac{1}{2}BC$; d) Sai vì $\\vec{NM}=\\frac{1}{2}\\vec{AB}$.",
+                "points": 2
+            },
+            {
+                "id": "q_1794279694207_10",
+                "part": 2,
+                "questionNumber": 10,
+                "content": "Cho đoạn thẳng $AB$ và điểm $M$ nằm giữa $A, B$ sao cho $AM=2MB$.",
+                "image": "",
+                "subItems": [
+                    {
+                        "id": "a",
+                        "text": "$\\vec{AM}=2\\vec{MB}$.",
+                        "correct": true
+                    },
+                    {
+                        "id": "b",
+                        "text": "$\\vec{BA}=3\\vec{MB}$.",
+                        "correct": false
+                    },
+                    {
+                        "id": "c",
+                        "text": "$\\vec{MA}=-2\\vec{MB}$.",
+                        "correct": true
+                    },
+                    {
+                        "id": "d",
+                        "text": "$\\vec{AM}=\\frac{2}{3}\\vec{AB}$.",
+                        "correct": true
+                    }
+                ],
+                "explanation": "Vì $M$ nằm giữa $A, B$ và $AM=2MB$ nên $AB=3MB$. Ta có: a) Đúng vì $\\vec{AM}$ cùng hướng $\\vec{MB}$ và $AM=2MB$; b) Sai vì $\\vec{BA}$ ngược hướng $\\vec{MB}$ nên $\\vec{BA}=-3\\vec{MB}$; c) Đúng vì $\\vec{MA}$ ngược hướng $\\vec{MB}$ và $MA=2MB$; d) Đúng vì $\\vec{AM}$ cùng hướng $\\vec{AB}$ và $AM=\\frac{2}{3}AB$.",
+                "points": 2
+            },
+            {
+                "id": "q_1794279694207_11",
+                "part": 3,
+                "questionNumber": 11,
+                "content": "Lấy ba điểm $A, B, C$ thẳng hàng sao cho điểm $C$ nằm giữa $A$ và $B$. Biết tỉ số độ dài $CA=\\frac{2}{3}CB$. Tìm số thực $p$ sao cho $\\vec{BC}=p\\vec{BA}$.",
+                "image": "",
+                "acceptedAnswers": [
+                    "0.6",
+                    "0,6",
+                    "3/5"
+                ],
+                "tolerance": 0.01,
+                "explanation": "Vì điểm $C$ nằm giữa $A$ và $B$ nên $BA=BC+CA=BC+\\frac{2}{3}BC=\\frac{5}{3}BC \\implies BC=\\frac{3}{5}BA=0{,}6BA$. Hai vectơ $\\vec{BC}$ và $\\vec{BA}$ cùng hướng nên $\\vec{BC}=0{,}6\\vec{BA}$. Vậy $p=0{,}6$.",
+                "points": 1
+            },
+            {
+                "id": "q_1794279694207_12",
+                "part": 3,
+                "questionNumber": 12,
+                "content": "Cho hình thang $ABCD$ có hai đáy là $AB$ và $CD$ ($AB \\parallel CD$) và hai đường chéo cắt nhau tại $O$. Biết đáy lớn $CD$ có độ dài gấp $4$ lần đáy nhỏ $AB$. Tìm $y$ để $\\vec{OA}=y\\vec{OC}$.",
+                "image": "",
+                "acceptedAnswers": [
+                    "-0.25",
+                    "-0,25",
+                    "-1/4"
+                ],
+                "tolerance": 0.01,
+                "explanation": "Do $AB \\parallel CD$ nên theo định lý Thales ta có $\\frac{OA}{OC}=\\frac{AB}{CD}=\\frac{1}{4}$. Vì $O$ nằm giữa $A$ và $C$ nên hai vectơ $\\vec{OA}$ và $\\vec{OC}$ ngược hướng, suy ra $\\vec{OA}=-\\frac{1}{4}\\vec{OC}=-0{,}25\\vec{OC}$. Vậy $y=-0{,}25$.",
+                "points": 1
             }
-          ],
-          "correctAnswer": "B",
-          "explanation": "Điểm cực đại của **đồ thị** hàm số có tọa độ là cặp $(x; y)$, do đó điểm cần tìm là $(1; 3)$. (Lưu ý: $x = 1$ là điểm cực đại của hàm số, $y = 3$ là giá trị cực đại).",
-          "points": 0.25
+        ],
+        "antiCheat": {
+            "disableCopy": true,
+            "autoSubmitOnExcess": true,
+            "maxTabSwitches": 3,
+            "disableContextMenu": true
         },
-        {
-          "id": "q2",
-          "part": 1,
-          "questionNumber": 2,
-          "content": "Đường tiệm cận đứng của đồ thị hàm số $y = \\frac{2x - 3}{x + 1}$ có phương trình là:",
-          "options": [
-            {
-              "id": "A",
-              "text": "$x = -1$"
-            },
-            {
-              "id": "B",
-              "text": "$y = 2$"
-            },
-            {
-              "id": "C",
-              "text": "$x = 1$"
-            },
-            {
-              "id": "D",
-              "text": "$y = -3$"
-            }
-          ],
-          "correctAnswer": "A",
-          "explanation": "Mẫu số $x + 1 = 0 \\iff x = -1$. Vì tử số tại $x = -1$ là $-5 \\neq 0$, nên đường thẳng $x = -1$ là tiệm cận đứng.",
-          "points": 0.25
+        "partPoints": {
+            "part2": 2,
+            "part1": 0.5,
+            "part3": 1
         },
-        {
-          "id": "q3",
-          "part": 1,
-          "questionNumber": 3,
-          "content": "Cho khối chóp $S.ABC$ có đáy $ABC$ là tam giác vuông tại $B$, $AB = a$, $BC = 2a$. Cạnh bên $SA$ vuông góc với mặt đáy và $SA = 3a$. Thể tích $V$ của khối chóp đã cho bằng:",
-          "options": [
-            {
-              "id": "A",
-              "text": "$2a^3$"
-            },
-            {
-              "id": "B",
-              "text": "$a^3$"
-            },
-            {
-              "id": "C",
-              "text": "$6a^3$"
-            },
-            {
-              "id": "D",
-              "text": "$\\frac{a^3}{3}$"
-            }
-          ],
-          "correctAnswer": "B",
-          "explanation": "Diện tích đáy: $S_{\\Delta ABC} = \\frac{1}{2}AB \\cdot BC = \\frac{1}{2} \\cdot a \\cdot 2a = a^2$. Chiều cao $h = SA = 3a$. Thể tích $V = \\frac{1}{3} S_{ABC} \\cdot SA = \\frac{1}{3} a^2 \\cdot 3a = a^3$.",
-          "points": 0.25
-        },
-        {
-          "id": "q4",
-          "part": 1,
-          "questionNumber": 4,
-          "content": "Tìm tập xác định $D$ của hàm số $y = (x - 2)^{\\sqrt{3}}$.",
-          "options": [
-            {
-              "id": "A",
-              "text": "$D = \\mathbb{R} \\setminus \\{2\\}$"
-            },
-            {
-              "id": "B",
-              "text": "$D = [2; +\\infty)$"
-            },
-            {
-              "id": "C",
-              "text": "$D = (2; +\\infty)$"
-            },
-            {
-              "id": "D",
-              "text": "$D = \\mathbb{R}$"
-            }
-          ],
-          "correctAnswer": "C",
-          "explanation": "Vì số mũ $\\sqrt{3}$ là số vô tỉ (không nguyên), nên hàm số lũy thừa $y = u^\\alpha$ xác định khi và chỉ khi $u > 0 \\iff x - 2 > 0 \\iff x > 2$.",
-          "points": 0.25
-        },
-        {
-          "id": "q5",
-          "part": 2,
-          "questionNumber": 5,
-          "content": "Cho hàm số bậc ba $y = f(x) = x^3 - 3x^2 + 2$. Xét tính đúng/sai của các mệnh đề sau:",
-          "subItems": [
-            {
-              "id": "a",
-              "text": "Hàm số đồng biến trên khoảng $(2; +\\infty)$",
-              "correct": true
-            },
-            {
-              "id": "b",
-              "text": "Điểm cực tiểu của đồ thị hàm số là $(2; -2)$",
-              "correct": true
-            },
-            {
-              "id": "c",
-              "text": "Giá trị lớn nhất của hàm số trên đoạn $[0; 3]$ bằng $5$",
-              "correct": false
-            },
-            {
-              "id": "d",
-              "text": "Phương trình $x^3 - 3x^2 + 2 = 0$ có đúng 3 nghiệm thực phân biệt",
-              "correct": true
-            }
-          ],
-          "explanation": "Ta có $y' = 3x^2 - 6x = 3x(x - 2) = 0 \\iff x = 0$ hoặc $x = 2$.\n- $y' > 0$ trên $(-\\infty; 0)$ và $(2; +\\infty) \\implies$ ý a ĐÚNG.\n- Tại $x = 2 \\implies y = 2^3 - 3(4) + 2 = -2 \\implies$ cực tiểu là $(2; -2) \\implies$ ý b ĐÚNG.\n- Trên $[0; 3]$: $f(0) = 2, f(2) = -2, f(3) = 2$. Giá trị lớn nhất là $2 \\neq 5 \\implies$ ý c SAI.\n- Đồ thị cắt trục $Ox$ tại 3 nghiệm phân biệt $x = 1, x = 1 \\pm \\sqrt{3} \\implies$ ý d ĐÚNG.",
-          "points": 1
-        },
-        {
-          "id": "q6",
-          "part": 2,
-          "questionNumber": 6,
-          "content": "Trong không gian với hệ tọa độ $Oxyz$, cho mặt phẳng $(P): 2x - y + 2z - 6 = 0$ và điểm $A(1; 2; 3)$.",
-          "subItems": [
-            {
-              "id": "a",
-              "text": "Vectơ pháp tuyến của mặt phẳng $(P)$ là $\\vec{n} = (2; -1; 2)$",
-              "correct": true
-            },
-            {
-              "id": "b",
-              "text": "Điểm $A(1; 2; 3)$ thuộc mặt phẳng $(P)$",
-              "correct": false
-            },
-            {
-              "id": "c",
-              "text": "Khoảng cách từ điểm $A$ đến mặt phẳng $(P)$ bằng $\\frac{2}{3}$",
-              "correct": false
-            },
-            {
-              "id": "d",
-              "text": "Mặt cầu tâm $A$ tiếp xúc với $(P)$ có bán kính $R = 2$",
-              "correct": false
-            }
-          ],
-          "explanation": "- $\\vec{n} = (2; -1; 2) \\implies$ ý a ĐÚNG.\n- Thay tọa độ $A$: $2(1) - 2 + 2(3) - 6 = 0 \\implies A \\in (P) \\implies$ ý b SAI (vì điểm A thuộc mặt phẳng).\n- Vì $A \\in (P)$ nên khoảng cách $d(A, (P)) = 0 \\implies$ ý c và d đều SAI.",
-          "points": 1
-        },
-        {
-          "id": "q7",
-          "part": 3,
-          "questionNumber": 7,
-          "content": "Tìm giá trị nhỏ nhất của hàm số $y = x + \\frac{9}{x}$ trên khoảng $(0; +\\infty)$. (Nhập kết quả dưới dạng số).",
-          "acceptedAnswers": [
-            "6",
-            "6.0",
-            "6,0"
-          ],
-          "tolerance": 0.01,
-          "explanation": "Áp dụng bất đẳng thức Cauchy cho hai số dương $x$ và $\\frac{9}{x}$:\n$x + \\frac{9}{x} \\ge 2\\sqrt{x \\cdot \\frac{9}{x}} = 2 \\cdot 3 = 6$.\nDấu \"=\" xảy ra khi $x = \\frac{9}{x} \\iff x^2 = 9 \\iff x = 3$ (nhận vì $3 > 0$). Vậy giá trị nhỏ nhất là $6$.",
-          "points": 0.5
-        },
-        {
-          "id": "q8",
-          "part": 3,
-          "questionNumber": 8,
-          "content": "Tính tích phân $I = \\int_{0}^{2} (2x + 1) dx$. (Chấp nhận dấu chấm hoặc phẩy thập phân).",
-          "acceptedAnswers": [
-            "6",
-            "6.0",
-            "6,0"
-          ],
-          "tolerance": 0.01,
-          "explanation": "Nguyên hàm của $2x + 1$ là $F(x) = x^2 + x$.\nSuy ra $I = F(2) - F(0) = (2^2 + 2) - 0 = 6$.",
-          "points": 0.5
-        }
-      ],
-      "partPoints": {
-        "part1": 0.25,
-        "part2": 1,
-        "part3": 0.5
-      }
+        "classGroup": "Khối 10",
+        "scale": 10,
+        "title": "Đề Kiểm Tra Toán",
+        "assignedClasses": [
+            "LỚP 9",
+            "LỚP 10",
+            "LỚP 11",
+            "LỚP 12"
+        ]
     }
   ],
-  "submissions": [
-    {
-      "id": "sub_001",
-      "examId": "exam_sample_12hk1",
-      "studentId": "hs_001",
-      "studentName": "Nguyễn Văn An",
-      "studentClass": "12A1",
-      "startedAt": "2026-11-09T21:27:05.740Z",
-      "submittedAt": "2026-11-09T21:57:55.740Z",
-      "durationSeconds": 1850,
-      "answers": {
-        "q1": "B",
-        "q2": "A",
-        "q3": "B",
-        "q4": "C",
-        "q5": {
-          "a": true,
-          "b": true,
-          "c": false,
-          "d": true
-        },
-        "q6": {
-          "a": true,
-          "b": false,
-          "c": false,
-          "d": false
-        },
-        "q7": "6",
-        "q8": "6,0"
-      },
-      "score": 10,
-      "tabSwitches": 0,
-      "tabSwitchLogs": [],
-      "itemResults": {
-        "q1": {
-          "part": 1,
-          "questionNumber": 1,
-          "studentAnswer": "B",
-          "correctAnswer": "B",
-          "isCorrect": true,
-          "earnedPoints": 0.25,
-          "maxPoints": 0.25,
-          "explanation": "Điểm cực đại của **đồ thị** hàm số có tọa độ là cặp $(x; y)$, do đó điểm cần tìm là $(1; 3)$. (Lưu ý: $x = 1$ là điểm cực đại của hàm số, $y = 3$ là giá trị cực đại)."
-        },
-        "q2": {
-          "part": 1,
-          "questionNumber": 2,
-          "studentAnswer": "A",
-          "correctAnswer": "A",
-          "isCorrect": true,
-          "earnedPoints": 0.25,
-          "maxPoints": 0.25,
-          "explanation": "Mẫu số $x + 1 = 0 \\iff x = -1$. Vì tử số tại $x = -1$ là $-5 \\neq 0$, nên đường thẳng $x = -1$ là tiệm cận đứng."
-        },
-        "q3": {
-          "part": 1,
-          "questionNumber": 3,
-          "studentAnswer": "B",
-          "correctAnswer": "B",
-          "isCorrect": true,
-          "earnedPoints": 0.25,
-          "maxPoints": 0.25,
-          "explanation": "Diện tích đáy: $S_{\\Delta ABC} = \\frac{1}{2}AB \\cdot BC = \\frac{1}{2} \\cdot a \\cdot 2a = a^2$. Chiều cao $h = SA = 3a$. Thể tích $V = \\frac{1}{3} S_{ABC} \\cdot SA = \\frac{1}{3} a^2 \\cdot 3a = a^3$."
-        },
-        "q4": {
-          "part": 1,
-          "questionNumber": 4,
-          "studentAnswer": "C",
-          "correctAnswer": "C",
-          "isCorrect": true,
-          "earnedPoints": 0.25,
-          "maxPoints": 0.25,
-          "explanation": "Vì số mũ $\\sqrt{3}$ là số vô tỉ (không nguyên), nên hàm số lũy thừa $y = u^\\alpha$ xác định khi và chỉ khi $u > 0 \\iff x - 2 > 0 \\iff x > 2$."
-        },
-        "q5": {
-          "part": 2,
-          "questionNumber": 5,
-          "correctSubCount": 4,
-          "answeredSubCount": 4,
-          "subDetails": {
-            "a": {
-              "text": "Hàm số đồng biến trên khoảng $(2; +\\infty)$",
-              "studentAnswer": true,
-              "expectedAnswer": true,
-              "isMatch": true
-            },
-            "b": {
-              "text": "Điểm cực tiểu của đồ thị hàm số là $(2; -2)$",
-              "studentAnswer": true,
-              "expectedAnswer": true,
-              "isMatch": true
-            },
-            "c": {
-              "text": "Giá trị lớn nhất của hàm số trên đoạn $[0; 3]$ bằng $5$",
-              "studentAnswer": false,
-              "expectedAnswer": false,
-              "isMatch": true
-            },
-            "d": {
-              "text": "Phương trình $x^3 - 3x^2 + 2 = 0$ có đúng 3 nghiệm thực phân biệt",
-              "studentAnswer": true,
-              "expectedAnswer": true,
-              "isMatch": true
-            }
-          },
-          "earnedPoints": 1,
-          "maxPoints": 1,
-          "isFullCorrect": true,
-          "isCorrect": true,
-          "explanation": "Ta có $y' = 3x^2 - 6x = 3x(x - 2) = 0 \\iff x = 0$ hoặc $x = 2$.\n- $y' > 0$ trên $(-\\infty; 0)$ và $(2; +\\infty) \\implies$ ý a ĐÚNG.\n- Tại $x = 2 \\implies y = 2^3 - 3(4) + 2 = -2 \\implies$ cực tiểu là $(2; -2) \\implies$ ý b ĐÚNG.\n- Trên $[0; 3]$: $f(0) = 2, f(2) = -2, f(3) = 2$. Giá trị lớn nhất là $2 \\neq 5 \\implies$ ý c SAI.\n- Đồ thị cắt trục $Ox$ tại 3 nghiệm phân biệt $x = 1, x = 1 \\pm \\sqrt{3} \\implies$ ý d ĐÚNG."
-        },
-        "q6": {
-          "part": 2,
-          "questionNumber": 6,
-          "correctSubCount": 4,
-          "answeredSubCount": 4,
-          "subDetails": {
-            "a": {
-              "text": "Vectơ pháp tuyến của mặt phẳng $(P)$ là $\\vec{n} = (2; -1; 2)$",
-              "studentAnswer": true,
-              "expectedAnswer": true,
-              "isMatch": true
-            },
-            "b": {
-              "text": "Điểm $A(1; 2; 3)$ thuộc mặt phẳng $(P)$",
-              "studentAnswer": false,
-              "expectedAnswer": false,
-              "isMatch": true
-            },
-            "c": {
-              "text": "Khoảng cách từ điểm $A$ đến mặt phẳng $(P)$ bằng $\\frac{2}{3}$",
-              "studentAnswer": false,
-              "expectedAnswer": false,
-              "isMatch": true
-            },
-            "d": {
-              "text": "Mặt cầu tâm $A$ tiếp xúc với $(P)$ có bán kính $R = 2$",
-              "studentAnswer": false,
-              "expectedAnswer": false,
-              "isMatch": true
-            }
-          },
-          "earnedPoints": 1,
-          "maxPoints": 1,
-          "isFullCorrect": true,
-          "isCorrect": true,
-          "explanation": "- $\\vec{n} = (2; -1; 2) \\implies$ ý a ĐÚNG.\n- Thay tọa độ $A$: $2(1) - 2 + 2(3) - 6 = 0 \\implies A \\in (P) \\implies$ ý b SAI (vì điểm A thuộc mặt phẳng).\n- Vì $A \\in (P)$ nên khoảng cách $d(A, (P)) = 0 \\implies$ ý c và d đều SAI."
-        },
-        "q7": {
-          "part": 3,
-          "questionNumber": 7,
-          "studentAnswer": "6",
-          "acceptedAnswers": [
-            "6",
-            "6.0",
-            "6,0"
-          ],
-          "isCorrect": true,
-          "earnedPoints": 0.5,
-          "maxPoints": 0.5,
-          "explanation": "Áp dụng bất đẳng thức Cauchy cho hai số dương $x$ và $\\frac{9}{x}$:\n$x + \\frac{9}{x} \\ge 2\\sqrt{x \\cdot \\frac{9}{x}} = 2 \\cdot 3 = 6$.\nDấu \"=\" xảy ra khi $x = \\frac{9}{x} \\iff x^2 = 9 \\iff x = 3$ (nhận vì $3 > 0$). Vậy giá trị nhỏ nhất là $6$."
-        },
-        "q8": {
-          "part": 3,
-          "questionNumber": 8,
-          "studentAnswer": "6,0",
-          "acceptedAnswers": [
-            "6",
-            "6.0",
-            "6,0"
-          ],
-          "isCorrect": true,
-          "earnedPoints": 0.5,
-          "maxPoints": 0.5,
-          "explanation": "Nguyên hàm của $2x + 1$ là $F(x) = x^2 + x$.\nSuy ra $I = F(2) - F(0) = (2^2 + 2) - 0 = 6$."
-        }
-      }
-    },
-    {
-      "id": "sub_002",
-      "examId": "exam_sample_12hk1",
-      "studentId": "hs_002",
-      "studentName": "Lê Thị Hoa",
-      "studentClass": "12A1",
-      "startedAt": "2026-11-09T23:27:05.740Z",
-      "submittedAt": "2026-11-10T00:02:05.740Z",
-      "durationSeconds": 2100,
-      "answers": {
-        "q1": "A",
-        "q2": "A",
-        "q3": "B",
-        "q4": "C",
-        "q5": {
-          "a": true,
-          "b": true,
-          "c": true,
-          "d": true
-        },
-        "q6": {
-          "a": true,
-          "b": true,
-          "c": false,
-          "d": false
-        },
-        "q7": "6.0",
-        "q8": "5.5"
-      },
-      "score": 5.63,
-      "tabSwitches": 2,
-      "tabSwitchLogs": [
-        "Hệ thống ghi nhận rời tab lúc 11:15:20",
-        "Hệ thống ghi nhận rời tab lúc 11:28:44"
-      ],
-      "itemResults": {
-        "q1": {
-          "part": 1,
-          "questionNumber": 1,
-          "studentAnswer": "A",
-          "correctAnswer": "B",
-          "isCorrect": false,
-          "earnedPoints": 0,
-          "maxPoints": 0.25,
-          "explanation": "Điểm cực đại của **đồ thị** hàm số có tọa độ là cặp $(x; y)$, do đó điểm cần tìm là $(1; 3)$. (Lưu ý: $x = 1$ là điểm cực đại của hàm số, $y = 3$ là giá trị cực đại)."
-        },
-        "q2": {
-          "part": 1,
-          "questionNumber": 2,
-          "studentAnswer": "A",
-          "correctAnswer": "A",
-          "isCorrect": true,
-          "earnedPoints": 0.25,
-          "maxPoints": 0.25,
-          "explanation": "Mẫu số $x + 1 = 0 \\iff x = -1$. Vì tử số tại $x = -1$ là $-5 \\neq 0$, nên đường thẳng $x = -1$ là tiệm cận đứng."
-        },
-        "q3": {
-          "part": 1,
-          "questionNumber": 3,
-          "studentAnswer": "B",
-          "correctAnswer": "B",
-          "isCorrect": true,
-          "earnedPoints": 0.25,
-          "maxPoints": 0.25,
-          "explanation": "Diện tích đáy: $S_{\\Delta ABC} = \\frac{1}{2}AB \\cdot BC = \\frac{1}{2} \\cdot a \\cdot 2a = a^2$. Chiều cao $h = SA = 3a$. Thể tích $V = \\frac{1}{3} S_{ABC} \\cdot SA = \\frac{1}{3} a^2 \\cdot 3a = a^3$."
-        },
-        "q4": {
-          "part": 1,
-          "questionNumber": 4,
-          "studentAnswer": "C",
-          "correctAnswer": "C",
-          "isCorrect": true,
-          "earnedPoints": 0.25,
-          "maxPoints": 0.25,
-          "explanation": "Vì số mũ $\\sqrt{3}$ là số vô tỉ (không nguyên), nên hàm số lũy thừa $y = u^\\alpha$ xác định khi và chỉ khi $u > 0 \\iff x - 2 > 0 \\iff x > 2$."
-        },
-        "q5": {
-          "part": 2,
-          "questionNumber": 5,
-          "correctSubCount": 3,
-          "answeredSubCount": 4,
-          "subDetails": {
-            "a": {
-              "text": "Hàm số đồng biến trên khoảng $(2; +\\infty)$",
-              "studentAnswer": true,
-              "expectedAnswer": true,
-              "isMatch": true
-            },
-            "b": {
-              "text": "Điểm cực tiểu của đồ thị hàm số là $(2; -2)$",
-              "studentAnswer": true,
-              "expectedAnswer": true,
-              "isMatch": true
-            },
-            "c": {
-              "text": "Giá trị lớn nhất của hàm số trên đoạn $[0; 3]$ bằng $5$",
-              "studentAnswer": true,
-              "expectedAnswer": false,
-              "isMatch": false
-            },
-            "d": {
-              "text": "Phương trình $x^3 - 3x^2 + 2 = 0$ có đúng 3 nghiệm thực phân biệt",
-              "studentAnswer": true,
-              "expectedAnswer": true,
-              "isMatch": true
-            }
-          },
-          "earnedPoints": 0.5,
-          "maxPoints": 1,
-          "isFullCorrect": false,
-          "isCorrect": false,
-          "explanation": "Ta có $y' = 3x^2 - 6x = 3x(x - 2) = 0 \\iff x = 0$ hoặc $x = 2$.\n- $y' > 0$ trên $(-\\infty; 0)$ và $(2; +\\infty) \\implies$ ý a ĐÚNG.\n- Tại $x = 2 \\implies y = 2^3 - 3(4) + 2 = -2 \\implies$ cực tiểu là $(2; -2) \\implies$ ý b ĐÚNG.\n- Trên $[0; 3]$: $f(0) = 2, f(2) = -2, f(3) = 2$. Giá trị lớn nhất là $2 \\neq 5 \\implies$ ý c SAI.\n- Đồ thị cắt trục $Ox$ tại 3 nghiệm phân biệt $x = 1, x = 1 \\pm \\sqrt{3} \\implies$ ý d ĐÚNG."
-        },
-        "q6": {
-          "part": 2,
-          "questionNumber": 6,
-          "correctSubCount": 3,
-          "answeredSubCount": 4,
-          "subDetails": {
-            "a": {
-              "text": "Vectơ pháp tuyến của mặt phẳng $(P)$ là $\\vec{n} = (2; -1; 2)$",
-              "studentAnswer": true,
-              "expectedAnswer": true,
-              "isMatch": true
-            },
-            "b": {
-              "text": "Điểm $A(1; 2; 3)$ thuộc mặt phẳng $(P)$",
-              "studentAnswer": true,
-              "expectedAnswer": false,
-              "isMatch": false
-            },
-            "c": {
-              "text": "Khoảng cách từ điểm $A$ đến mặt phẳng $(P)$ bằng $\\frac{2}{3}$",
-              "studentAnswer": false,
-              "expectedAnswer": false,
-              "isMatch": true
-            },
-            "d": {
-              "text": "Mặt cầu tâm $A$ tiếp xúc với $(P)$ có bán kính $R = 2$",
-              "studentAnswer": false,
-              "expectedAnswer": false,
-              "isMatch": true
-            }
-          },
-          "earnedPoints": 0.5,
-          "maxPoints": 1,
-          "isFullCorrect": false,
-          "isCorrect": false,
-          "explanation": "- $\\vec{n} = (2; -1; 2) \\implies$ ý a ĐÚNG.\n- Thay tọa độ $A$: $2(1) - 2 + 2(3) - 6 = 0 \\implies A \\in (P) \\implies$ ý b SAI (vì điểm A thuộc mặt phẳng).\n- Vì $A \\in (P)$ nên khoảng cách $d(A, (P)) = 0 \\implies$ ý c và d đều SAI."
-        },
-        "q7": {
-          "part": 3,
-          "questionNumber": 7,
-          "studentAnswer": "6.0",
-          "acceptedAnswers": [
-            "6",
-            "6.0",
-            "6,0"
-          ],
-          "isCorrect": true,
-          "earnedPoints": 0.5,
-          "maxPoints": 0.5,
-          "explanation": "Áp dụng bất đẳng thức Cauchy cho hai số dương $x$ và $\\frac{9}{x}$:\n$x + \\frac{9}{x} \\ge 2\\sqrt{x \\cdot \\frac{9}{x}} = 2 \\cdot 3 = 6$.\nDấu \"=\" xảy ra khi $x = \\frac{9}{x} \\iff x^2 = 9 \\iff x = 3$ (nhận vì $3 > 0$). Vậy giá trị nhỏ nhất là $6$."
-        },
-        "q8": {
-          "part": 3,
-          "questionNumber": 8,
-          "studentAnswer": "5.5",
-          "acceptedAnswers": [
-            "6",
-            "6.0",
-            "6,0"
-          ],
-          "isCorrect": false,
-          "earnedPoints": 0,
-          "maxPoints": 0.5,
-          "explanation": "Nguyên hàm của $2x + 1$ là $F(x) = x^2 + x$.\nSuy ra $I = F(2) - F(0) = (2^2 + 2) - 0 = 6$."
-        }
-      }
-    }
-  ]
+  "submissions": []
 };
 
 window.SampleData = SampleData;
