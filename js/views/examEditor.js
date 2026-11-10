@@ -117,6 +117,15 @@ const ExamEditor = {
   _renderEditExamScreen() {
     const exam = this.currentExam;
     const questions = exam.questions || [];
+    const p1Questions = questions.filter(q => q.part === 1);
+    const p2Questions = questions.filter(q => q.part === 2);
+    const p3Questions = questions.filter(q => q.part === 3);
+
+    const part1Pt = exam.partPoints?.part1 !== undefined ? exam.partPoints.part1 : 0.25;
+    const part2Pt = exam.partPoints?.part2 !== undefined ? exam.partPoints.part2 : 1.0;
+    const part3Pt = exam.partPoints?.part3 !== undefined ? exam.partPoints.part3 : 0.5;
+
+    const totalCalculated = (p1Questions.length * part1Pt) + (p2Questions.length * part2Pt) + (p3Questions.length * part3Pt);
 
     return `
       <div class="space-y-6">
@@ -265,12 +274,136 @@ const ExamEditor = {
           </div>
         </div>
 
+        <!-- Part Points Settings Card (Quy định điểm từng phần tùy ý người ra đề) -->
+        <div class="bg-gradient-to-r from-blue-50/70 via-indigo-50/70 to-slate-50 dark:from-slate-800/80 dark:via-slate-800/60 dark:to-slate-800/40 rounded-3xl border border-blue-200/80 dark:border-slate-700 p-6 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="font-black text-sm text-blue-900 dark:text-blue-300 uppercase tracking-wider flex items-center space-x-2">
+                <span>🎯 2. Quy Định Điểm Từng Phần (Tuỳ Ý Người Ra Đề)</span>
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Cài đặt số điểm cho mỗi câu của từng phần. Bấm nút áp dụng để tự động cập nhật cho toàn bộ câu hỏi trong đề.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onclick="window.ExamEditor.applyPartPointsToAllQuestions()"
+              class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition flex items-center space-x-1.5 shrink-0"
+              title="Cập nhật điểm cho tất cả câu hỏi trong bài"
+            >
+              <span>⚡ Áp Dụng Cho Tất Cả Câu Hỏi</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Phần I -->
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                  Phần I: 4 Lựa chọn
+                </span>
+                <span class="text-xs text-slate-400 font-bold">${p1Questions.length} câu</span>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Điểm mỗi câu:</label>
+                <div class="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    id="partPoints_1"
+                    value="${part1Pt}"
+                    oninput="window.ExamEditor.updatePartPointsPreview()"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span class="text-xs font-bold text-slate-500">điểm</span>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400 leading-tight">Mặc định: 0.25đ / câu. Đúng nhận đủ điểm, sai nhận 0đ.</p>
+            </div>
+
+            <!-- Phần II -->
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-amber-300 dark:border-amber-700/80 space-y-2 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  Phần II: Đúng / Sai (4 ý)
+                </span>
+                <span class="text-xs text-slate-400 font-bold">${p2Questions.length} câu</span>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Điểm tối đa mỗi câu:</label>
+                <div class="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    id="partPoints_2"
+                    value="${part2Pt}"
+                    oninput="window.ExamEditor.updatePartPointsPreview()"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span class="text-xs font-bold text-slate-500">điểm</span>
+                </div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 text-[10px] text-amber-900 dark:text-amber-200 space-y-1 font-medium">
+                <div class="font-bold text-amber-800 dark:text-amber-300 mb-0.5">Quy tắc chấm Đúng/Sai 4 ý:</div>
+                <div class="flex justify-between"><span>• Đúng 1 ý:</span><strong id="p2_sample_1">${(part2Pt * 0.1).toFixed(2)}đ (10%)</strong></div>
+                <div class="flex justify-between"><span>• Đúng 2 ý:</span><strong id="p2_sample_2">${(part2Pt * 0.25).toFixed(2)}đ (25%)</strong></div>
+                <div class="flex justify-between"><span>• Đúng 3 ý:</span><strong id="p2_sample_3">${(part2Pt * 0.5).toFixed(2)}đ (50%)</strong></div>
+                <div class="flex justify-between"><span>• Đúng 4 ý:</span><strong id="p2_sample_4">${part2Pt}đ (100%)</strong></div>
+                <div class="flex justify-between text-red-500 font-bold"><span>• Chưa chọn / Sai hết:</span><span>0 điểm</span></div>
+              </div>
+            </div>
+
+            <!-- Phần III -->
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                  Phần III: Điền số
+                </span>
+                <span class="text-xs text-slate-400 font-bold">${p3Questions.length} câu</span>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Điểm mỗi câu:</label>
+                <div class="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    id="partPoints_3"
+                    value="${part3Pt}"
+                    oninput="window.ExamEditor.updatePartPointsPreview()"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span class="text-xs font-bold text-slate-500">điểm</span>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400 leading-tight">Mặc định: 0.5đ / câu. Đúng nhận đủ điểm, sai nhận 0đ.</p>
+            </div>
+          </div>
+
+          <!-- Total Points Summary Bar -->
+          <div id="partPointsSummaryBar" class="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300 gap-2">
+            <div class="flex items-center space-x-3">
+              <span>Phần I: <strong>${(p1Questions.length * part1Pt).toFixed(2)}đ</strong></span>
+              <span>•</span>
+              <span>Phần II: <strong>${(p2Questions.length * part2Pt).toFixed(2)}đ</strong></span>
+              <span>•</span>
+              <span>Phần III: <strong>${(p3Questions.length * part3Pt).toFixed(2)}đ</strong></span>
+            </div>
+            <div class="text-blue-600 dark:text-blue-400 font-black text-sm">
+              Tổng điểm đề: <span>${totalCalculated.toFixed(2)}đ</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Question List Section -->
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider">
-                2. Danh Sách Câu Hỏi (${questions.length} câu)
+                3. Danh Sách Câu Hỏi (${questions.length} câu)
               </h3>
               <p class="text-xs text-slate-400">Bạn có thể thêm từng câu hoặc nhập hàng loạt từ Excel ở trên</p>
             </div>
@@ -497,6 +630,12 @@ const ExamEditor = {
     this.currentExam.viewScoreMode = document.getElementById('editViewScoreMode').value;
     this.currentExam.viewAnswerMode = document.getElementById('editViewAnswerMode').value;
     
+    // Lưu cấu hình điểm từng phần
+    const p1 = parseFloat(document.getElementById('partPoints_1')?.value) || 0.25;
+    const p2 = parseFloat(document.getElementById('partPoints_2')?.value) || 1.0;
+    const p3 = parseFloat(document.getElementById('partPoints_3')?.value) || 0.5;
+    this.currentExam.partPoints = { part1: p1, part2: p2, part3: p3 };
+
     if (!this.currentExam.antiCheat) this.currentExam.antiCheat = {};
     this.currentExam.antiCheat.maxTabSwitches = parseInt(document.getElementById('editMaxTabSwitches').value, 10) || 3;
 
@@ -507,6 +646,63 @@ const ExamEditor = {
     await DB.saveExam(this.currentExam);
     alert('Đã lưu đề thi thành công!');
     this.closeEditor();
+  },
+
+  applyPartPointsToAllQuestions() {
+    if (!this.currentExam) return;
+    const p1 = parseFloat(document.getElementById('partPoints_1')?.value) || 0.25;
+    const p2 = parseFloat(document.getElementById('partPoints_2')?.value) || 1.0;
+    const p3 = parseFloat(document.getElementById('partPoints_3')?.value) || 0.5;
+
+    this.currentExam.partPoints = { part1: p1, part2: p2, part3: p3 };
+
+    let count = 0;
+    (this.currentExam.questions || []).forEach(q => {
+      if (q.part === 1) { q.points = p1; count++; }
+      else if (q.part === 2) { q.points = p2; count++; }
+      else if (q.part === 3) { q.points = p3; count++; }
+    });
+
+    alert(`Đã cập nhật lại điểm thành công cho toàn bộ ${count} câu hỏi:\n- Phần I: ${p1}đ / câu\n- Phần II: ${p2}đ / câu (theo quy tắc 1 ý: 10%, 2 ý: 25%, 3 ý: 50%, 4 ý: 100%)\n- Phần III: ${p3}đ / câu`);
+    window.App.renderApp();
+  },
+
+  updatePartPointsPreview() {
+    if (!this.currentExam) return;
+    const p1 = parseFloat(document.getElementById('partPoints_1')?.value) || 0;
+    const p2 = parseFloat(document.getElementById('partPoints_2')?.value) || 0;
+    const p3 = parseFloat(document.getElementById('partPoints_3')?.value) || 0;
+
+    const p1Count = (this.currentExam.questions || []).filter(q => q.part === 1).length;
+    const p2Count = (this.currentExam.questions || []).filter(q => q.part === 2).length;
+    const p3Count = (this.currentExam.questions || []).filter(q => q.part === 3).length;
+
+    const total = (p1Count * p1) + (p2Count * p2) + (p3Count * p3);
+
+    const s1 = document.getElementById('p2_sample_1');
+    if (s1) s1.textContent = `${(p2 * 0.1).toFixed(2)}đ (10%)`;
+    const s2 = document.getElementById('p2_sample_2');
+    if (s2) s2.textContent = `${(p2 * 0.25).toFixed(2)}đ (25%)`;
+    const s3 = document.getElementById('p2_sample_3');
+    if (s3) s3.textContent = `${(p2 * 0.5).toFixed(2)}đ (50%)`;
+    const s4 = document.getElementById('p2_sample_4');
+    if (s4) s4.textContent = `${p2}đ (100%)`;
+
+    const bar = document.getElementById('partPointsSummaryBar');
+    if (bar) {
+      bar.innerHTML = `
+        <div class="flex items-center space-x-3">
+          <span>Phần I: <strong>${(p1Count * p1).toFixed(2)}đ</strong></span>
+          <span>•</span>
+          <span>Phần II: <strong>${(p2Count * p2).toFixed(2)}đ</strong></span>
+          <span>•</span>
+          <span>Phần III: <strong>${(p3Count * p3).toFixed(2)}đ</strong></span>
+        </div>
+        <div class="text-blue-600 dark:text-blue-400 font-black text-sm">
+          Tổng điểm đề: <span>${total.toFixed(2)}đ</span>
+        </div>
+      `;
+    }
   },
 
   async deleteExam(examId) {
@@ -563,6 +759,10 @@ const ExamEditor = {
     const modal = document.getElementById('questionEditorModal');
     modal.classList.remove('hidden');
 
+    const p1Default = this.currentExam?.partPoints?.part1 !== undefined ? this.currentExam.partPoints.part1 : 0.25;
+    const p2Default = this.currentExam?.partPoints?.part2 !== undefined ? this.currentExam.partPoints.part2 : 1.0;
+    const p3Default = this.currentExam?.partPoints?.part3 !== undefined ? this.currentExam.partPoints.part3 : 0.5;
+
     let q = null;
     if (index >= 0) {
       q = this.currentExam.questions[index];
@@ -574,7 +774,7 @@ const ExamEditor = {
         options: [{ id: 'A', text: '' }, { id: 'B', text: '' }, { id: 'C', text: '' }, { id: 'D', text: '' }],
         correctAnswer: 'A',
         explanation: '',
-        points: 0.25
+        points: p1Default
       };
       document.getElementById('questionModalTitle').textContent = `Thêm Câu Hỏi Mới`;
     }
@@ -582,7 +782,7 @@ const ExamEditor = {
     document.getElementById('modalQPart').value = q.part;
     document.getElementById('modalQContent').value = q.content || '';
     document.getElementById('modalQExplanation').value = q.explanation || '';
-    document.getElementById('modalQPoints').value = q.points || (q.part === 1 ? 0.25 : (q.part === 2 ? 1.0 : 0.5));
+    document.getElementById('modalQPoints').value = q.points !== undefined && q.points !== null ? q.points : (q.part === 1 ? p1Default : (q.part === 2 ? p2Default : p3Default));
 
     this.handlePartChange(q.part, q);
     this.updateLiveMathPreview();
@@ -591,6 +791,17 @@ const ExamEditor = {
   handlePartChange(partVal, existingQ = null) {
     const part = parseInt(partVal, 10);
     const container = document.getElementById('modalQAnswersContainer');
+
+    const p1Default = this.currentExam?.partPoints?.part1 !== undefined ? this.currentExam.partPoints.part1 : 0.25;
+    const p2Default = this.currentExam?.partPoints?.part2 !== undefined ? this.currentExam.partPoints.part2 : 1.0;
+    const p3Default = this.currentExam?.partPoints?.part3 !== undefined ? this.currentExam.partPoints.part3 : 0.5;
+
+    const ptInput = document.getElementById('modalQPoints');
+    if (ptInput && !existingQ) {
+      if (part === 1) ptInput.value = p1Default;
+      else if (part === 2) ptInput.value = p2Default;
+      else if (part === 3) ptInput.value = p3Default;
+    }
 
     if (part === 1) {
       const opts = existingQ?.options || [{ id: 'A', text: '' }, { id: 'B', text: '' }, { id: 'C', text: '' }, { id: 'D', text: '' }];

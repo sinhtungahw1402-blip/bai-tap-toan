@@ -54,7 +54,9 @@ const GradingEngine = {
 
       if (q.part === 1) {
         // --- PHẦN 1: TRẮC NGHIỆM 4 LỰA CHỌN ---
-        const defaultPt = q.points !== undefined && q.points !== null ? Number(q.points) : 0.25;
+        const defaultPt = q.points !== undefined && q.points !== null 
+          ? Number(q.points) 
+          : (examKey.partPoints?.part1 !== undefined ? Number(examKey.partPoints.part1) : 0.25);
         maxRawScore += defaultPt;
 
         const isCorrect = sAns && String(sAns).trim().toUpperCase() === String(q.correctAnswer).trim().toUpperCase();
@@ -74,19 +76,28 @@ const GradingEngine = {
 
       } else if (q.part === 2) {
         // --- PHẦN 2: ĐÚNG / SAI (4 Ý a, b, c, d) ---
-        const defaultMaxPt = q.points !== undefined && q.points !== null ? Number(q.points) : 1.0;
+        // Quy tắc chấm:
+        // • Đúng 1 ý: 0.1 điểm (10% điểm câu)
+        // • Đúng 2 ý: 0.25 điểm (25% điểm câu)
+        // • Đúng 3 ý: 0.5 điểm (50% điểm câu)
+        // • Đúng 4 ý: 1.0 điểm (100% điểm câu)
+        // • Không làm hoặc sai cả 4: 0 điểm
+        const defaultMaxPt = q.points !== undefined && q.points !== null 
+          ? Number(q.points) 
+          : (examKey.partPoints?.part2 !== undefined ? Number(examKey.partPoints.part2) : 1.0);
         maxRawScore += defaultMaxPt;
 
         const subItems = q.subItems || [];
         let correctSubCount = 0;
+        let answeredSubCount = 0;
         const subDetails = {};
 
         subItems.forEach(sub => {
           const subAns = sAns ? sAns[sub.id] : undefined;
-          // sub.correct là boolean (true/false)
           const expected = Boolean(sub.correct);
           const hasAnswered = typeof subAns === 'boolean';
-          const isMatch = hasAnswered && subAns === expected;
+          if (hasAnswered) answeredSubCount++;
+          const isMatch = hasAnswered && (subAns === expected);
 
           if (isMatch) correctSubCount++;
 
@@ -98,31 +109,36 @@ const GradingEngine = {
           };
         });
 
-        // Điểm lũy tiến: 1 ý = 0.1; 2 ý = 0.25; 3 ý = 0.5; 4 ý = 1.0
+        // Điểm lũy tiến theo số ý đúng:
         let baseEarned = 0;
         if (correctSubCount === 1) baseEarned = 0.1;
         else if (correctSubCount === 2) baseEarned = 0.25;
         else if (correctSubCount === 3) baseEarned = 0.5;
         else if (correctSubCount === 4) baseEarned = 1.0;
+        else baseEarned = 0; // Chưa làm hoặc sai hết = 0 điểm tuyệt đối
 
-        // Nếu câu có điểm tối đa tùy chỉnh khác 1.0 thì tỉ lệ tương ứng
-        const earned = (baseEarned / 1.0) * defaultMaxPt;
+        // Nếu câu có điểm tối đa tùy chỉnh thì tính tỉ lệ theo điểm của câu
+        const earned = correctSubCount > 0 ? Number(((baseEarned / 1.0) * defaultMaxPt).toFixed(3)) : 0;
         rawScore += earned;
 
         itemResults[qId] = {
           part: 2,
           questionNumber: q.questionNumber,
           correctSubCount,
+          answeredSubCount,
           subDetails,
-          earnedPoints: Number(earned.toFixed(3)),
+          earnedPoints: earned,
           maxPoints: defaultMaxPt,
           isFullCorrect: correctSubCount === 4,
+          isCorrect: correctSubCount === 4,
           explanation: q.explanation || ''
         };
 
       } else if (q.part === 3) {
         // --- PHẦN 3: TRẢ LỜI NGẮN (ĐIỀN SỐ) ---
-        const defaultPt = q.points !== undefined && q.points !== null ? Number(q.points) : 0.5;
+        const defaultPt = q.points !== undefined && q.points !== null 
+          ? Number(q.points) 
+          : (examKey.partPoints?.part3 !== undefined ? Number(examKey.partPoints.part3) : 0.5);
         maxRawScore += defaultPt;
 
         const sNorm = this.normalizeNumberString(sAns);

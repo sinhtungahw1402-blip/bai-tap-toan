@@ -17,6 +17,19 @@ const ExamResult = {
 
     const rawExam = await DB.getExamById(submission.examId, 'admin');
     const exam = rawExam || { title: 'Bài kiểm tra Toán', dueTime: null, scale: 10, viewScoreMode: 'immediate', viewAnswerMode: 'immediate', questions: [] };
+
+    // Tự động kiểm tra và tính toán lại chi tiết chấm nếu submission bị thiếu subDetails
+    const sampleP2Q = (exam.questions || []).find(q => q.part === 2);
+    if (!submission.itemResults || (sampleP2Q && (!submission.itemResults[sampleP2Q.id] || !submission.itemResults[sampleP2Q.id].subDetails))) {
+      if (typeof GradingEngine !== 'undefined') {
+        const regraded = GradingEngine.gradeSubmission(exam, submission.answers, { scale: exam.scale || 10 });
+        submission.itemResults = regraded.itemResults;
+        submission.score = regraded.finalScore;
+        submission.rawScore = regraded.rawScore;
+        submission.maxRawScore = regraded.maxRawScore;
+      }
+    }
+
     const now = new Date();
     const isDuePassed = exam.dueTime ? (now > new Date(exam.dueTime)) : true;
     const canViewScore = exam.viewScoreMode === 'immediate' || isDuePassed;
@@ -258,26 +271,49 @@ const ExamResult = {
     }
 
     if (q.part === 2) {
+      const sAnsObj = (submission.answers && submission.answers[q.id]) || {};
       const details = res ? (res.subDetails || {}) : {};
+
       return `
         <div class="space-y-1.5 text-xs">
           ${(q.subItems || []).map(sub => {
-            const d = details[sub.id] || {};
-            const isMatch = d.isMatch;
-            const expectedStr = sub.correct ? 'Đúng' : 'Sai';
-            const studentStr = d.studentAnswer === true ? 'Đúng' : (d.studentAnswer === false ? 'Sai' : 'Chưa chọn');
+            const d = details[sub.id];
+            let studentVal = null;
+            if (d && typeof d.studentAnswer === 'boolean') {
+              studentVal = d.studentAnswer;
+            } else if (typeof sAnsObj[sub.id] === 'boolean') {
+              studentVal = sAnsObj[sub.id];
+            }
+
+            const expected = Boolean(sub.correct);
+            const isMatch = studentVal !== null && studentVal === expected;
+            const expectedStr = expected ? 'Đúng' : 'Sai';
+            const studentStr = studentVal === true ? 'Đúng' : (studentVal === false ? 'Sai' : 'Chưa chọn');
+
+            let cardBorder = 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40';
+            if (studentVal !== null) {
+              cardBorder = isMatch 
+                ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/30 dark:bg-emerald-950/20' 
+                : 'border-red-200 dark:border-red-900/60 bg-red-50/30 dark:bg-red-950/20';
+            }
 
             return `
-              <div class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+              <div class="p-2.5 rounded-xl border ${cardBorder} flex items-center justify-between gap-2">
                 <div class="flex items-center space-x-2">
                   <span class="font-bold text-indigo-600 dark:text-indigo-400">${sub.id})</span>
                   <span class="text-slate-800 dark:text-slate-200">${MathRenderer.renderToString(sub.text)}</span>
                 </div>
                 <div class="flex items-center space-x-2 shrink-0">
-                  <span class="text-[11px] text-slate-500">Em chọn: <strong>${studentStr}</strong></span>
-                  <span class="text-[11px] text-emerald-600 font-bold">Đáp án: <strong>${expectedStr}</strong></span>
-                  <span class="w-5 h-5 rounded-full flex items-center justify-center font-bold text-white text-[10px] ${isMatch ? 'bg-emerald-500' : 'bg-rose-500'}">
-                    ${isMatch ? '✓' : '✕'}
+                  <span class="text-[11px] ${studentVal === null ? 'text-slate-400 italic' : (isMatch ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold')}">
+                    Em chọn: <strong>${studentStr}</strong>
+                  </span>
+                  <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                    Đáp án: <strong>${expectedStr}</strong>
+                  </span>
+                  <span class="w-5 h-5 rounded-full flex items-center justify-center font-bold text-white text-[10px] ${
+                    studentVal === null ? 'bg-slate-300 dark:bg-slate-600' : (isMatch ? 'bg-emerald-500' : 'bg-rose-500')
+                  }">
+                    ${studentVal === null ? '—' : (isMatch ? '✓' : '✕')}
                   </span>
                 </div>
               </div>

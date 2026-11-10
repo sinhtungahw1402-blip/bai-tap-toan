@@ -74,11 +74,27 @@ const DB = {
         });
       }
 
-      // Đảm bảo đề thi mở cho tất cả các lớp của trường
+      // Đảm bảo đề thi mở cho tất cả các lớp của trường và có cấu hình partPoints
       if (Array.isArray(localData.exams)) {
         localData.exams.forEach(ex => {
+          if (!ex.partPoints) {
+            ex.partPoints = { part1: 0.25, part2: 1.0, part3: 0.5 };
+            modified = true;
+          }
           if (!ex.assignedClasses || ex.assignedClasses.length === 0 || !ex.assignedClasses.includes('LỚP 10')) {
             ex.assignedClasses = ['LỚP 9', 'LỚP 10', 'LỚP 11', 'LỚP 12', '12A1', '12A2'];
+            modified = true;
+          }
+        });
+      }
+
+      // Cập nhật chi tiết kết quả bài nộp mẫu nếu bị thiếu subDetails
+      if (Array.isArray(localData.submissions) && Array.isArray(SampleData.submissions)) {
+        SampleData.submissions.forEach(sampleSub => {
+          const idx = localData.submissions.findIndex(s => s.id === sampleSub.id);
+          if (idx >= 0) {
+            localData.submissions[idx].itemResults = sampleSub.itemResults;
+            localData.submissions[idx].score = sampleSub.score;
             modified = true;
           }
         });
