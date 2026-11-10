@@ -323,7 +323,7 @@ const ExamTaking = {
               </div>
 
               <!-- Question Content (Rendered with KaTeX) -->
-              <div class="text-base sm:text-lg text-slate-800 dark:text-slate-100 font-medium leading-relaxed mb-6">
+              <div class="text-base sm:text-lg text-slate-800 dark:text-slate-100 font-medium leading-relaxed py-1 mb-6 overflow-visible">
                 ${MathRenderer.renderToString(currentQ.content)}
               </div>
 
@@ -556,7 +556,7 @@ const ExamTaking = {
                 }">
                   ${opt.id}
                 </div>
-                <div class="text-sm sm:text-base text-slate-800 dark:text-slate-200 pt-0.5 leading-snug">
+                <div class="text-sm sm:text-base text-slate-800 dark:text-slate-200 py-1 leading-relaxed overflow-visible">
                   ${MathRenderer.renderToString(opt.text)}
                 </div>
               </div>
@@ -588,7 +588,7 @@ const ExamTaking = {
                     <span class="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center shrink-0">
                       ${sub.id})
                     </span>
-                    <div class="text-sm text-slate-800 dark:text-slate-200 font-medium">
+                    <div class="text-sm text-slate-800 dark:text-slate-200 font-medium py-1 leading-relaxed overflow-visible">
                       ${MathRenderer.renderToString(sub.text)}
                     </div>
                   </div>

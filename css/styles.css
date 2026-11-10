@@ -67,20 +67,50 @@ body {
   background: #334155;
 }
 
-/* KaTeX Formula Styling Enhancements */
+/* KaTeX Formula Styling & SVG Vector Arrow Compatibility */
 .katex {
   font-size: 1.1em !important;
   text-rendering: auto;
+  border-color: currentColor;
 }
 .katex-display {
   margin: 0.75em 0 !important;
   overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0.25rem 0;
+  overflow-y: visible !important;
+  padding: 0.35rem 0;
 }
 .katex-inline {
   display: inline-block;
   vertical-align: middle;
+}
+
+/* Bảo vệ tất cả SVG KaTeX (mũi tên véc-tơ, căn bậc hai, dấu ngoặc lớn) khỏi Tailwind CSS Reset */
+.katex svg {
+  display: block !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+/* Đảm bảo dấu mũi tên véc-tơ \overrightarrow & \vec luôn hiển thị đầy đủ, không bị ẩn hay cắt đầu */
+.katex .accent .accent-body {
+  overflow: visible !important;
+}
+.katex .accent .accent-body > .overlay {
+  display: inline-block !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+.katex .accent .accent-body > .overlay > svg {
+  position: relative !important;
+  width: inherit !important;
+  height: inherit !important;
+  overflow: visible !important;
+}
+.katex .svg-align {
+  overflow: visible !important;
+}
+.katex-html, .katex-base {
+  overflow: visible !important;
 }
 
 /* Anti-Cheat Protected Screen */

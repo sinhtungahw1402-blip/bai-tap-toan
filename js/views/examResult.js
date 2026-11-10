@@ -208,7 +208,7 @@ const ExamResult = {
         </div>
 
         <!-- Content -->
-        <div class="text-sm sm:text-base text-slate-800 dark:text-slate-100 font-medium leading-relaxed">
+        <div class="text-sm sm:text-base text-slate-800 dark:text-slate-100 font-medium leading-relaxed py-1 overflow-visible">
           ${MathRenderer.renderToString(q.content)}
         </div>
 
@@ -223,7 +223,7 @@ const ExamResult = {
             <div class="font-bold text-blue-800 dark:text-blue-300 mb-1 flex items-center space-x-1">
               <span>💡 Hướng dẫn giải chi tiết:</span>
             </div>
-            <div class="text-slate-700 dark:text-slate-300 leading-relaxed">
+            <div class="text-slate-700 dark:text-slate-300 leading-relaxed py-1 overflow-visible">
               ${MathRenderer.renderToString(q.explanation)}
             </div>
           </div>
@@ -260,7 +260,7 @@ const ExamResult = {
                   <span class="w-6 h-6 rounded-lg font-bold flex items-center justify-center ${isTarget ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}">
                     ${opt.id}
                   </span>
-                  <span>${MathRenderer.renderToString(opt.text)}</span>
+                  <span class="py-0.5 leading-relaxed overflow-visible">${MathRenderer.renderToString(opt.text)}</span>
                 </div>
                 ${isStudent ? `<span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${isTarget ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'}">Em chọn</span>` : ''}
               </div>
@@ -301,7 +301,7 @@ const ExamResult = {
               <div class="p-2.5 rounded-xl border ${cardBorder} flex items-center justify-between gap-2">
                 <div class="flex items-center space-x-2">
                   <span class="font-bold text-indigo-600 dark:text-indigo-400">${sub.id})</span>
-                  <span class="text-slate-800 dark:text-slate-200">${MathRenderer.renderToString(sub.text)}</span>
+                  <span class="text-slate-800 dark:text-slate-200 py-0.5 leading-relaxed overflow-visible">${MathRenderer.renderToString(sub.text)}</span>
                 </div>
                 <div class="flex items-center space-x-2 shrink-0">
                   <span class="text-[11px] ${studentVal === null ? 'text-slate-400 italic' : (isMatch ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold')}">

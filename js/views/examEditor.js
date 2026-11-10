@@ -433,7 +433,7 @@ const ExamEditor = {
                     </span>
                   </div>
 
-                  <div class="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2">
+                  <div class="text-sm font-medium text-slate-800 dark:text-slate-200 py-1 leading-relaxed overflow-visible">
                     ${MathRenderer.renderToString(q.content)}
                   </div>
                 </div>
@@ -518,9 +518,9 @@ const ExamEditor = {
             ></textarea>
 
             <!-- Live LaTeX Preview Box -->
-            <div class="mt-2 p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+            <div class="mt-2 p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 overflow-visible">
               <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">👁️ Xem trước hiển thị công thức:</span>
-              <div id="modalQLivePreview" class="text-sm font-medium text-slate-800 dark:text-slate-200 min-h-[24px]"></div>
+              <div id="modalQLivePreview" class="text-sm font-medium text-slate-800 dark:text-slate-200 min-h-[24px] py-1 leading-relaxed overflow-visible"></div>
             </div>
           </div>
 
