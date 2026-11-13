@@ -52,6 +52,9 @@ const StudentDashboard = {
         }
         // Luôn đưa vào tab Đang mở để học sinh nhìn thấy và bấm vào thi
         activeExams.push({ exam, submission: hasSub });
+      } else {
+        // Chưa đến giờ mở: vẫn hiển thị trong tab Đang mở nhưng khóa nút và ghi rõ thời điểm bắt đầu
+        activeExams.push({ exam, submission: hasSub, isNotYetOpen: true });
       }
     });
 
@@ -78,6 +81,16 @@ const StudentDashboard = {
               <p class="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl">
                 Chuẩn bị nháp, máy tính cầm tay và giữ kết nối mạng ổn định trước khi bấm vào phòng thi nhé.
               </p>
+              <div class="mt-4 flex items-center space-x-2">
+                <button
+                  type="button"
+                  onclick="window.App.openChangePasswordModal()"
+                  class="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-xs font-bold text-white transition flex items-center space-x-1.5 shadow-sm border border-white/20 active:scale-95"
+                >
+                  <span>🔑</span>
+                  <span>Đổi Mật Khẩu Cá Nhân</span>
+                </button>
+              </div>
             </div>
 
             <!-- Stats Quick Counters -->
@@ -177,7 +190,16 @@ const StudentDashboard = {
     const p2Count = (exam.questions || []).filter(q => q.part === 2).length;
     const p3Count = (exam.questions || []).filter(q => q.part === 3).length;
 
-    const dueDateStr = exam.dueTime ? new Date(exam.dueTime).toLocaleString('vi-VN', {
+    const now = new Date();
+    const openDate = exam.openTime ? new Date(exam.openTime) : null;
+    const dueDate = exam.dueTime ? new Date(exam.dueTime) : null;
+    const isNotYetOpen = openDate && (now < openDate);
+
+    const openDateStr = openDate ? openDate.toLocaleString('vi-VN', {
+      hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+    }) : null;
+
+    const dueDateStr = dueDate ? dueDate.toLocaleString('vi-VN', {
       hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
     }) : 'Không giới hạn';
 
@@ -194,6 +216,10 @@ const StudentDashboard = {
               <span class="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
                 ⭐ Đạt ${submission.score}đ
               </span>
+            ` : (isNotYetOpen ? `
+              <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
+                ⏳ Chưa mở (${openDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})
+              </span>
             ` : (status === 'due_soon' ? `
               <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 animate-pulse">
                 ⏳ Còn ${hoursLeft}h
@@ -206,7 +232,7 @@ const StudentDashboard = {
               <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
                 ● Đang mở
               </span>
-            `))}
+            `)))}
           </div>
 
           <!-- Exam Title -->
@@ -222,6 +248,11 @@ const StudentDashboard = {
             <div class="flex items-center space-x-1.5">
               <span>📝 Cấu trúc: <strong class="text-slate-700 dark:text-slate-200">${qCount} câu</strong> (${p1Count} TN, ${p2Count} Đ/S, ${p3Count} Điền số)</span>
             </div>
+            ${openDateStr ? `
+              <div class="flex items-center space-x-1.5">
+                <span>⏰ Bắt đầu: <strong class="${isNotYetOpen ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-300'} font-semibold">${openDateStr}</strong></span>
+              </div>
+            ` : ''}
             <div class="flex items-center space-x-1.5">
               <span>📅 Hạn nộp: <span class="text-slate-700 dark:text-slate-300 font-medium">${dueDateStr}</span></span>
             </div>
@@ -238,13 +269,34 @@ const StudentDashboard = {
               >
                 Xem lời giải
               </button>
-              <button
-                onclick="window.App.startExam('${exam.id}')"
-                class="w-full py-2.5 px-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition text-center"
-              >
-                Làm lại bài
-              </button>
+              ${isNotYetOpen ? `
+                <button
+                  type="button"
+                  disabled
+                  class="w-full py-2.5 px-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-400 font-bold text-xs cursor-not-allowed opacity-60 text-center"
+                  title="Chưa đến thời điểm mở đề thi"
+                >
+                  🔒 Chưa mở
+                </button>
+              ` : `
+                <button
+                  onclick="window.App.startExam('${exam.id}')"
+                  class="w-full py-2.5 px-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition text-center"
+                >
+                  Làm lại bài
+                </button>
+              `}
             </div>
+          ` : (isNotYetOpen ? `
+            <button
+              type="button"
+              disabled
+              class="w-full py-3 px-4 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500 font-bold text-xs sm:text-sm cursor-not-allowed flex items-center justify-center space-x-1.5 border border-slate-200 dark:border-slate-600 select-none shadow-none"
+              title="Chưa đến giờ làm bài! Đề thi sẽ mở lúc: ${openDateStr}"
+            >
+              <span>🔒 Chưa Đến Giờ Làm Bài</span>
+              <span class="text-[11px] font-normal">(${openDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${openDate.toLocaleDateString('vi-VN')})</span>
+            </button>
           ` : (status === 'expired' ? `
             <button
               onclick="window.App.startExam('${exam.id}')"
@@ -260,7 +312,7 @@ const StudentDashboard = {
               <span>Vào Làm Bài Thi Ngay</span>
               <span>→</span>
             </button>
-          `)}
+          `))}
         </div>
       </div>
     `;

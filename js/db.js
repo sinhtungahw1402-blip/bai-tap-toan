@@ -241,6 +241,62 @@ const DB = {
     return studentData;
   },
 
+  async updateStudentPassword(studentId, newPassword) {
+    let hash = '';
+    try {
+      hash = await DeviceSecurity.sha256(newPassword);
+    } catch (e) {
+      hash = newPassword;
+    }
+
+    const db = this._getLocal();
+    const students = db.students || [];
+    const index = students.findIndex(s => s.id === studentId);
+    if (index >= 0) {
+      students[index].passwordHash = hash;
+      students[index].initialPassword = newPassword;
+      students[index].mustChangePassword = false;
+      students[index].updatedAt = new Date().toISOString();
+      db.students = students;
+      this._saveLocal(db);
+    }
+
+    if (this.isFirebaseActive && this.firestore) {
+      try {
+        await this.firestore.collection('students').doc(studentId).set({
+          passwordHash: hash,
+          initialPassword: newPassword,
+          mustChangePassword: false,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log(`[DB] Đã cập nhật mật khẩu mới của học sinh ${studentId} lên Firebase Cloud!`);
+      } catch (err) {
+        console.warn('[DB] Lỗi lưu mật khẩu học sinh lên Firebase:', err);
+      }
+    }
+
+    // Cập nhật phiên đăng nhập hiện hành nếu đúng học sinh này
+    try {
+      const saved = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION);
+      if (saved) {
+        const current = JSON.parse(saved);
+        if (current.id === studentId) {
+          current.passwordHash = hash;
+          current.initialPassword = newPassword;
+          current.mustChangePassword = false;
+          localStorage.setItem(APP_CONFIG.STORAGE_KEYS.STUDENT_SESSION, JSON.stringify(current));
+          if (window.App && window.App.currentUser) {
+            window.App.currentUser.passwordHash = hash;
+            window.App.currentUser.initialPassword = newPassword;
+            window.App.currentUser.mustChangePassword = false;
+          }
+        }
+      }
+    } catch (e) {}
+
+    return true;
+  },
+
   async saveStudentsBulk(newStudentsList) {
     const db = this._getLocal();
     const existing = db.students || [];
@@ -305,6 +361,9 @@ const DB = {
       const db = this._getLocal();
       allExams = db.exams || [];
     }
+
+    // Sắp xếp đề thi mới nhất lên trên
+    allExams.sort((a, b) => new Date(b.createdAt || b.openTime || 0) - new Date(a.createdAt || a.openTime || 0));
 
     // Nếu là học sinh: lọc bài phù hợp và loại bỏ đáp án đúng
     if (role === 'student') {
@@ -389,6 +448,31 @@ const DB = {
       } catch (e) {}
     }
     return true;
+  },
+
+  // Lắng nghe thay đổi Đề thi từ Firebase Cloud theo thời gian thực (Real-time updates)
+  listenExams(callback) {
+    if (this.isFirebaseActive && this.firestore) {
+      try {
+        console.log('[DB] Đang kích hoạt lắng nghe Đề thi Firebase Cloud thời gian thực...');
+        return this.firestore.collection('exams').onSnapshot((snap) => {
+          const cloudExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          cloudExams.sort((a, b) => new Date(b.createdAt || b.openTime || 0) - new Date(a.createdAt || a.openTime || 0));
+          const db = this._getLocal();
+          db.exams = cloudExams;
+          this._saveLocal(db);
+          console.log(`[DB Realtime] Ngân hàng đề thi vừa cập nhật: ${cloudExams.length} đề`);
+          if (typeof callback === 'function') {
+            callback(cloudExams);
+          }
+        }, (err) => {
+          console.warn('[DB Realtime] Lỗi lắng nghe đề thi Firestore:', err);
+        });
+      } catch (e) {
+        console.warn('[DB] Không thể thiết lập Firestore onSnapshot listener:', e);
+      }
+    }
+    return null;
   },
 
   // ================= BÀI NỘP (SUBMISSIONS) =================

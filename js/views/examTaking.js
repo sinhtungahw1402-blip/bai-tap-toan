@@ -26,6 +26,20 @@ const ExamTaking = {
       return;
     }
 
+    // Kiểm tra nghiêm ngặt thời điểm bắt đầu mở đề thi
+    if (this.exam.openTime) {
+      const openDate = new Date(this.exam.openTime);
+      const now = new Date();
+      if (now < openDate) {
+        const timeStr = openDate.toLocaleString('vi-VN', {
+          hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+        });
+        alert(`⏳ CHƯA ĐẾN GIỜ LÀM BÀI!\n\nĐề thi "${this.exam.title}" chỉ bắt đầu mở vào lúc:\n👉 ${timeStr}\n\nHiện tại: ${now.toLocaleString('vi-VN')}\nEm vui lòng quay lại khi đến giờ làm bài nhé!`);
+        window.App.navigateTo('student-dashboard');
+        return;
+      }
+    }
+
     // 1. Khôi phục bài làm từ LocalStorage (nếu rớt mạng hoặc tải lại trang)
     const storageKey = `azota_exam_session_${this.exam.id}_${this.student.id}`;
     const savedSession = localStorage.getItem(storageKey);

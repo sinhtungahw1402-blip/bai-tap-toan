@@ -127,6 +127,14 @@ const ExamEditor = {
 
     const totalCalculated = (p1Questions.length * part1Pt) + (p2Questions.length * part2Pt) + (p3Questions.length * part3Pt);
 
+    const toLocalISO = (dStr) => {
+      if (!dStr) return '';
+      const d = new Date(dStr);
+      if (isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
     return `
       <div class="space-y-6">
         
@@ -270,6 +278,35 @@ const ExamEditor = {
                 value="${exam.antiCheat?.maxTabSwitches || 3}"
                 class="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
               />
+            </div>
+          </div>
+
+          <!-- Thời gian bắt đầu mở đề & Hạn nộp bài -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center space-x-1">
+                <span>⏰ Thời điểm bắt đầu mở đề (Chỉ làm được từ lúc này):</span>
+              </label>
+              <input
+                type="datetime-local"
+                id="editExamOpenTime"
+                value="${toLocalISO(exam.openTime)}"
+                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p class="text-[10px] text-slate-400 mt-1">Để trống nếu muốn mở ngay cho học sinh làm bài.</p>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center space-x-1">
+                <span>📅 Hạn chót nộp bài:</span>
+              </label>
+              <input
+                type="datetime-local"
+                id="editExamDueTime"
+                value="${toLocalISO(exam.dueTime)}"
+                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p class="text-[10px] text-slate-400 mt-1">Sau thời điểm này học sinh chỉ có thể luyện tập quá hạn.</p>
             </div>
           </div>
         </div>
@@ -630,6 +667,13 @@ const ExamEditor = {
     this.currentExam.viewScoreMode = document.getElementById('editViewScoreMode').value;
     this.currentExam.viewAnswerMode = document.getElementById('editViewAnswerMode').value;
     
+    // Lưu thời gian bắt đầu mở đề & hạn nộp bài
+    const openVal = document.getElementById('editExamOpenTime')?.value;
+    this.currentExam.openTime = openVal ? new Date(openVal).toISOString() : null;
+
+    const dueVal = document.getElementById('editExamDueTime')?.value;
+    this.currentExam.dueTime = dueVal ? new Date(dueVal).toISOString() : null;
+
     // Lưu cấu hình điểm từng phần
     const p1 = parseFloat(document.getElementById('partPoints_1')?.value) || 0.25;
     const p2 = parseFloat(document.getElementById('partPoints_2')?.value) || 1.0;
