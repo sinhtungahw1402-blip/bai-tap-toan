@@ -4,9 +4,14 @@ const App = {
   currentUser: null, // { role: 'student' | 'admin', ... }
   viewParam: null,
   isChangePasswordModalOpen: false,
+  deferredInstallPrompt: null,
+  isAppInstalled: false,
 
   async init() {
     console.log('[App] Khởi động Azota Toán...');
+
+    // 0. Khởi tạo tính năng Cài đặt App (PWA)
+    this.initPWAInstall();
 
     // 1. Đăng ký Service Worker cho PWA (bỏ qua nếu file:// hoặc không hỗ trợ)
     try {
@@ -196,6 +201,7 @@ const App = {
           ${viewHtml}
         </main>
         ${this._renderChangePasswordModal()}
+        ${this._renderInstallGuideModal()}
       `;
 
       // Kích hoạt render công thức KaTeX cho toàn bộ trang
@@ -392,6 +398,184 @@ const App = {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    `;
+  },
+
+  // ================= PWA INSTALLATION CONTROLLER =================
+  initPWAInstall() {
+    // 1. Kiểm tra standalone
+    const isStandalone = (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                         (typeof navigator !== 'undefined' && navigator.standalone === true);
+    if (isStandalone) {
+      this.isAppInstalled = true;
+      console.log('[PWA] Ứng dụng đang chạy ở chế độ Standalone (Đã cài đặt)');
+    }
+
+    // 2. Lắng nghe sự kiện beforeinstallprompt
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        this.deferredInstallPrompt = e;
+        console.log('[PWA] Trình duyệt đã sẵn sàng sự kiện cài đặt PWA!');
+      });
+
+      // 3. Lắng nghe sự kiện appinstalled
+      window.addEventListener('appinstalled', () => {
+        this.isAppInstalled = true;
+        this.deferredInstallPrompt = null;
+        console.log('[PWA] Ứng dụng Toán Thầy Tùng đã được cài đặt thành công!');
+        alert('🎉 Chúc mừng em đã cài đặt ứng dụng Toán Thầy Tùng thành công!\nBiểu tượng app đã xuất hiện trên màn hình điện thoại của em.');
+      });
+    }
+  },
+
+  async installApp() {
+    // A. Nếu có sự kiện cài đặt native (Android Chrome, Edge, PC...)
+    if (this.deferredInstallPrompt) {
+      try {
+        this.deferredInstallPrompt.prompt();
+        const choice = await this.deferredInstallPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          console.log('[PWA] Người dùng đã bấm Cài đặt');
+          this.deferredInstallPrompt = null;
+        }
+        return;
+      } catch (err) {
+        console.warn('[PWA] Lỗi prompt native:', err);
+      }
+    }
+
+    // B. Phân loại theo thiết bị để hiện hướng dẫn chi tiết
+    const userAgent = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(typeof window !== 'undefined' && window.MSStream);
+    const isAndroid = /Android/i.test(userAgent);
+
+    if (isIOS) {
+      this.showInstallGuideModal('ios');
+    } else if (isAndroid) {
+      this.showInstallGuideModal('android');
+    } else {
+      this.showInstallGuideModal('desktop');
+    }
+  },
+
+  showInstallGuideModal(platform) {
+    const modal = document.getElementById('pwaInstallGuideModal');
+    const titleEl = document.getElementById('pwaModalTitle');
+    const contentEl = document.getElementById('pwaModalContent');
+    if (!modal || !titleEl || !contentEl) {
+      // Fallback nếu modal chưa kịp chèn vào DOM
+      if (platform === 'ios') {
+        alert('📲 HƯỚNG DẪN CÀI ĐẶT TRÊN IPHONE / IPAD:\n\n1. Mở trang bằng trình duyệt Safari.\n2. Bấm nút Chia sẻ (biểu tượng ô vuông có mũi tên lên ⎋ ở dưới đáy màn hình).\n3. Chọn "Thêm vào MH chính" (Add to Home Screen ➕).\n4. Bấm "Thêm" ở góc trên bên phải để hoàn tất!');
+      } else if (platform === 'android') {
+        alert('📲 HƯỚNG DẪN CÀI ĐẶT TRÊN ANDROID:\n\n1. Mở trang bằng Google Chrome.\n2. Bấm vào dấu 3 chấm ⋮ ở góc trên bên phải.\n3. Chọn "Cài đặt ứng dụng" hoặc "Thêm vào màn hình chính".\n4. Bấm "Cài đặt" để đưa biểu tượng app ra ngoài màn hình!');
+      } else {
+        alert('📲 CÀI ĐẶT ỨNG DỤNG:\n\nBấm vào biểu tượng Cài đặt (📥) ở góc phải thanh địa chỉ trình duyệt để cài app về máy.');
+      }
+      return;
+    }
+
+    if (platform === 'ios') {
+      titleEl.innerHTML = '🍎 Cài Đặt Trên iPhone / iPad';
+      contentEl.innerHTML = `
+        <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 space-y-3">
+          <p class="font-bold text-xs">Vui lòng mở trang web này bằng trình duyệt <strong class="text-blue-600 dark:text-blue-400">Safari</strong> trên iPhone:</p>
+          <div class="space-y-3 text-xs font-medium leading-relaxed">
+            <div class="flex items-start space-x-2.5">
+              <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">1</span>
+              <span>Bấm vào nút <strong>Chia sẻ</strong> (biểu tượng ô vuông có mũi tên chỉ lên <span class="text-base font-bold">⎋</span>) ở thanh công cụ dưới đáy màn hình Safari.</span>
+            </div>
+            <div class="flex items-start space-x-2.5">
+              <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">2</span>
+              <span>Cuộn xuống dưới và bấm vào dòng <strong>"Thêm vào MH chính"</strong> (Add to Home Screen <span class="text-sm font-bold">➕</span>).</span>
+            </div>
+            <div class="flex items-start space-x-2.5">
+              <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">3</span>
+              <span>Nhấn nút <strong>"Thêm"</strong> (Add) ở góc trên bên phải màn hình để hoàn tất!</span>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 italic text-center">Biểu tượng "Toán Thầy Tùng" sẽ xuất hiện ngay ngoài màn hình chính của em như mọi app khác!</p>
+      `;
+    } else if (platform === 'android') {
+      titleEl.innerHTML = '🤖 Cài Đặt Trên Điện Thoại Android';
+      contentEl.innerHTML = `
+        <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 space-y-3">
+          <p class="font-bold text-xs">Để cài app về màn hình chính điện thoại:</p>
+          <div class="space-y-3 text-xs font-medium leading-relaxed">
+            <div class="flex items-start space-x-2.5">
+              <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">1</span>
+              <span>Đảm bảo em đang mở link bằng trình duyệt <strong>Google Chrome</strong> (Nếu đang mở trong Zalo, bấm nút <strong>⋮</strong> góc trên -> chọn <em>"Mở bằng trình duyệt"</em>).</span>
+            </div>
+            <div class="flex items-start space-x-2.5">
+              <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">2</span>
+              <span>Bấm vào dấu <strong>3 chấm dọc ⋮</strong> ở góc trên bên phải trình duyệt Chrome.</span>
+            </div>
+            <div class="flex items-start space-x-2.5">
+              <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">3</span>
+              <span>Chọn dòng <strong>"Cài đặt ứng dụng"</strong> (hoặc <strong>"Thêm vào Màn hình chính"</strong>) rồi bấm <strong>Cài đặt</strong>!</span>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 italic text-center">App sẽ được cài ra màn hình điện thoại, mở lên làm bài mượt mà không cần gõ lại web!</p>
+      `;
+    } else {
+      titleEl.innerHTML = '💻 Cài Đặt Ứng Dụng Về Máy Tính';
+      contentEl.innerHTML = `
+        <div class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 text-blue-900 dark:text-blue-200 space-y-3">
+          <p class="font-bold text-xs">Cài đặt trực tiếp trên Chrome / Edge máy tính:</p>
+          <p class="text-xs leading-relaxed">
+            Nhìn lên thanh địa chỉ của trình duyệt (thanh gõ link web), bấm vào biểu tượng <strong>Cài đặt</strong> (hình máy tính có mũi tên tải xuống <span class="font-bold">📥</span>) và bấm <strong>Cài đặt</strong>.
+          </p>
+        </div>
+      `;
+    }
+
+    modal.classList.remove('hidden');
+  },
+
+  closeInstallGuideModal() {
+    const modal = document.getElementById('pwaInstallGuideModal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  _renderInstallGuideModal() {
+    return `
+      <!-- Modal Hướng Dẫn Cài Đặt App Cho Điện Thoại -->
+      <div id="pwaInstallGuideModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 space-y-4 animate-bounce-once">
+          
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl shadow-sm">
+                📲
+              </div>
+              <div>
+                <h3 id="pwaModalTitle" class="text-base font-black text-slate-900 dark:text-white">
+                  Cài Đặt App Toán Thầy Tùng
+                </h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Đưa ứng dụng ra màn hình chính điện thoại</p>
+              </div>
+            </div>
+            <button type="button" onclick="window.App.closeInstallGuideModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition">✕</button>
+          </div>
+
+          <div id="pwaModalContent" class="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+            <!-- Nội dung hướng dẫn động theo thiết bị -->
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+            <button
+              type="button"
+              onclick="window.App.closeInstallGuideModal()"
+              class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition"
+            >
+              Đã Hiểu & Đóng
+            </button>
+          </div>
+
         </div>
       </div>
     `;

@@ -18,16 +18,19 @@ const StudentLogin = {
             </p>
           </div>
 
-          <!-- Direct Test Button (1-Click Instant Access) -->
+          <!-- PWA Install Button (Cài đặt app về điện thoại) -->
           <div class="mb-4">
             <button
               type="button"
-              onclick="window.StudentLogin.directDemoExam()"
+              onclick="window.App.installApp()"
               class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-sm shadow-lg shadow-emerald-500/25 active:scale-[0.98] transition flex items-center justify-center space-x-2"
             >
-              <span class="text-lg">⚡</span>
-              <span>VÀO LÀM BÀI THI THỬ NGAY (1 CHẠM)</span>
+              <span class="text-xl">📲</span>
+              <span>CÀI ĐẶT APP VỀ ĐIỆN THOẠI</span>
             </button>
+            <p class="text-[11px] text-center text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
+              ✨ Bấm để đưa app ra màn hình chính (vào làm bài nhanh & tiện lợi)
+            </p>
           </div>
 
           <!-- Main Login Form -->
@@ -86,46 +89,6 @@ const StudentLogin = {
                 Đăng Nhập Vào Phòng Thi
               </button>
             </form>
-
-            <!-- Quick Test Accounts Helper -->
-            <div class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-700/60">
-              <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2.5 flex items-center justify-between">
-                <span>⚡ Chọn nhanh tài khoản thi thử:</span>
-                <span class="text-[10px] text-blue-600 dark:text-blue-400">Pass: 123456</span>
-              </p>
-              <div class="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onclick="window.StudentLogin.fillAndLogin('vhgn10', '123456')"
-                  class="p-2.5 text-left rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-slate-700/60 dark:hover:bg-slate-700 border border-blue-200/60 dark:border-slate-600 transition"
-                  title="Võ Hồng Gia Nghi - LỚP 10"
-                >
-                  <div class="text-xs font-bold text-blue-700 dark:text-blue-300 truncate">Gia Nghi</div>
-                  <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Lớp 10</div>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="window.StudentLogin.fillAndLogin('vptt10', '123456')"
-                  class="p-2.5 text-left rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/40 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 transition"
-                  title="Võ Phan Thanh Trúc - LỚP 10"
-                >
-                  <div class="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">Thanh Trúc</div>
-                  <div class="text-[10px] text-slate-500 dark:text-slate-400">Lớp 10</div>
-                </button>
-
-                <button
-                  type="button"
-                  onclick="window.StudentLogin.fillAndLogin('ptd10', '123456')"
-                  class="p-2.5 text-left rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/40 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 transition"
-                  title="Phan Tuấn Đạt - LỚP 10"
-                >
-                  <div class="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">Tuấn Đạt</div>
-                  <div class="text-[10px] text-slate-500 dark:text-slate-400">Lớp 10</div>
-                </button>
-              </div>
-            </div>
-
           </div>
 
           <!-- Bottom Switch to Admin -->

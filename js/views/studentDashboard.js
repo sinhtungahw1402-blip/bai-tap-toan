@@ -81,7 +81,15 @@ const StudentDashboard = {
               <p class="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl">
                 Chuẩn bị nháp, máy tính cầm tay và giữ kết nối mạng ổn định trước khi bấm vào phòng thi nhé.
               </p>
-              <div class="mt-4 flex items-center space-x-2">
+              <div class="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onclick="window.App.installApp()"
+                  class="px-4 py-2 rounded-xl bg-emerald-500/90 hover:bg-emerald-600 backdrop-blur-md text-xs font-bold text-white transition flex items-center space-x-1.5 shadow-md shadow-emerald-500/25 active:scale-95 border border-emerald-400/40"
+                >
+                  <span>📲</span>
+                  <span>Cài Đặt App Về Điện Thoại</span>
+                </button>
                 <button
                   type="button"
                   onclick="window.App.openChangePasswordModal()"
@@ -387,10 +395,10 @@ const StudentDashboard = {
         <h4 class="text-base font-bold text-slate-800 dark:text-slate-200">Bài kiểm tra Toán</h4>
         <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">${message}</p>
         <button
-          onclick="window.StudentLogin.directDemoExam()"
-          class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md transition"
+          onclick="window.App.renderApp()"
+          class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition"
         >
-          Vào thi thử bài mẫu chuẩn ngay →
+          Tải lại danh sách đề thi ↻
         </button>
       </div>
     `;

@@ -25,6 +25,17 @@ const Navbar = {
             <!-- Right Controls -->
             <div class="flex items-center space-x-2 sm:space-x-3">
               
+              <!-- Nút Cài Đặt App -->
+              <button
+                type="button"
+                onclick="window.App.installApp()"
+                title="Cài đặt ứng dụng về màn hình điện thoại / máy tính"
+                class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm shadow-emerald-500/20 active:scale-95 transition"
+              >
+                <span class="text-sm">📲</span>
+                <span class="hidden xs:inline sm:inline">Cài App</span>
+              </button>
+
               <!-- Dark Mode Toggle Button -->
               <button onclick="window.App.toggleDarkMode()" title="Chuyển chế độ Sáng/Tối" class="p-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 ${isDark ? `
