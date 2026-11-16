@@ -5,10 +5,12 @@ const AdminDashboard = {
   async render(presetTab = null, param = null) {
     if (presetTab) this.currentTab = presetTab;
 
-    const students = await DB.getStudents();
-    const exams = await DB.getExams(null, 'admin');
-    const submissions = await DB.getSubmissions();
-    const adminConfig = await DB.getAdminConfig();
+    const [students, exams, submissions, adminConfig] = await Promise.all([
+      DB.getStudents(),
+      DB.getExams(null, 'admin'),
+      DB.getSubmissions(),
+      DB.getAdminConfig()
+    ]);
 
     return `
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -233,16 +235,16 @@ const AdminDashboard = {
       return this._renderOverviewTab(data);
     }
     if (tab === 'students') {
-      return await StudentManagement.render();
+      return await StudentManagement.render(data.students);
     }
     if (tab === 'exams') {
-      return await ExamEditor.render();
+      return await ExamEditor.render(data.exams);
     }
     if (tab === 'assign') {
-      return await ExamAssign.render(data.param);
+      return await ExamAssign.render(data.param, data.exams, data.students);
     }
     if (tab === 'analytics') {
-      return await Analytics.render(data.param);
+      return await Analytics.render(data.param, data.exams, data.students, data.submissions);
     }
     return '';
   },
@@ -350,11 +352,13 @@ const AdminDashboard = {
         }
       });
 
-      // 2. Tải và hiển thị nội dung tab tương ứng
-      const students = await DB.getStudents();
-      const exams = await DB.getExams(null, 'admin');
-      const submissions = await DB.getSubmissions();
-      const adminConfig = await DB.getAdminConfig();
+      // 2. Lấy dữ liệu siêu tốc từ In-Memory Cache (0ms)
+      const [students, exams, submissions, adminConfig] = await Promise.all([
+        DB.getStudents(),
+        DB.getExams(null, 'admin'),
+        DB.getSubmissions(),
+        DB.getAdminConfig()
+      ]);
 
       container.innerHTML = await this._renderActiveTabContent(tab, { students, exams, submissions, adminConfig, param });
 

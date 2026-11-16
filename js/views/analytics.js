@@ -3,9 +3,9 @@ const Analytics = {
   selectedExamId: null,
   inspectingSubmission: null,
 
-  async render(presetExamId) {
-    const exams = await DB.getExams(null, 'admin');
-    const students = await DB.getStudents();
+  async render(presetExamId = null, presetExams = null, presetStudents = null, presetSubmissions = null) {
+    const exams = presetExams || await DB.getExams(null, 'admin');
+    const students = presetStudents || await DB.getStudents();
 
     if (!this.selectedExamId && exams.length > 0) {
       this.selectedExamId = presetExamId || exams[0].id;
@@ -18,7 +18,7 @@ const Analytics = {
       return `<div class="p-8 text-center text-slate-500">Chưa có đề thi nào để thống kê.</div>`;
     }
 
-    const submissions = await DB.getSubmissions(currentExam.id);
+    const submissions = (presetSubmissions ? presetSubmissions.filter(s => s.examId === currentExam.id) : null) || await DB.getSubmissions(currentExam.id);
     const assignedClasses = currentExam.assignedClasses || [];
     
     // Danh sách học sinh thuộc diện thi đề này

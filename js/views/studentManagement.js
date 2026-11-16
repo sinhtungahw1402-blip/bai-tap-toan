@@ -3,8 +3,8 @@ const StudentManagement = {
   selectedClass: 'ALL',
   searchQuery: '',
 
-  async render() {
-    const students = await DB.getStudents();
+  async render(presetStudents = null) {
+    const students = presetStudents || await DB.getStudents();
     const classes = Array.from(new Set(students.map(s => s.class).filter(Boolean))).sort();
 
     let filtered = students;

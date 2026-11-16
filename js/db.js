@@ -1,10 +1,111 @@
-// Azota Toán - Unified Database Adapter (Local Storage + Cloud Firebase)
+// Azota Toán - Unified Database Adapter (Cache-First In-Memory + Local Storage + Cloud Firebase)
 const DB = {
   isFirebaseActive: false,
   firestore: null,
 
+  // Bộ nhớ đệm In-Memory RAM: Phản hồi tức thì trong 0 miligiây, triệt tiêu hoàn toàn độ trễ khi chuyển tab
+  _cache: {
+    students: null,
+    exams: null,
+    submissions: null,
+    adminConfig: null
+  },
+  _listenersAttached: false,
+  _subscribers: [],
+
+  // Nạp bộ nhớ đệm In-Memory từ LocalStorage ngay từ mili-giây đầu tiên
+  _initCache() {
+    if (!this._cache.students || !this._cache.exams) {
+      const local = this._getLocal();
+      this._cache.students = local.students || [];
+      this._cache.exams = local.exams || [];
+      this._cache.submissions = local.submissions || [];
+      this._cache.adminConfig = local.adminConfig || null;
+    }
+  },
+
+  // Đăng ký nhận thông báo thay đổi dữ liệu thời gian thực
+  subscribe(callback) {
+    if (typeof callback === 'function') {
+      this._subscribers.push(callback);
+    }
+  },
+
+  _notifySubscribers(type, data) {
+    this._subscribers.forEach(cb => {
+      try { cb(type, data); } catch (e) {}
+    });
+  },
+
+  // Gắn các listener lắng nghe Firebase Cloud ngầm không chặn luồng chính (Non-blocking)
+  _attachRealtimeListeners() {
+    if (this._listenersAttached || !this.isFirebaseActive || !this.firestore) return;
+    this._listenersAttached = true;
+    console.log('[DB] Đã kích hoạt cơ chế đồng bộ Firebase Cloud Realtime ngầm (Zero-Latency Cache)...');
+
+    // 1. Lắng nghe Đề thi
+    try {
+      this.firestore.collection('exams').onSnapshot((snap) => {
+        if (!snap.empty) {
+          const cloudExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          cloudExams.sort((a, b) => new Date(b.createdAt || b.openTime || 0) - new Date(a.createdAt || a.openTime || 0));
+          this._cache.exams = cloudExams;
+          const local = this._getLocal();
+          local.exams = cloudExams;
+          this._saveLocal(local, false);
+          this._notifySubscribers('exams', cloudExams);
+        }
+      }, (err) => console.warn('[DB Realtime] Lỗi lắng nghe đề thi:', err));
+    } catch (e) {}
+
+    // 2. Lắng nghe Học sinh
+    try {
+      this.firestore.collection('students').onSnapshot((snap) => {
+        if (!snap.empty) {
+          const cloudStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          this._cache.students = cloudStudents;
+          const local = this._getLocal();
+          local.students = cloudStudents;
+          this._saveLocal(local, false);
+          this._notifySubscribers('students', cloudStudents);
+        }
+      }, (err) => console.warn('[DB Realtime] Lỗi lắng nghe học sinh:', err));
+    } catch (e) {}
+
+    // 3. Lắng nghe Bài nộp
+    try {
+      this.firestore.collection('submissions').onSnapshot((snap) => {
+        if (!snap.empty) {
+          const cloudSubs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          this._cache.submissions = cloudSubs;
+          const local = this._getLocal();
+          local.submissions = cloudSubs;
+          this._saveLocal(local, false);
+          this._notifySubscribers('submissions', cloudSubs);
+        }
+      }, (err) => console.warn('[DB Realtime] Lỗi lắng nghe bài nộp:', err));
+    } catch (e) {}
+
+    // 4. Lắng nghe Cấu hình bảo mật Admin (Device lock)
+    try {
+      this.firestore.collection('admin_config').doc('device_lock').onSnapshot((doc) => {
+        if (doc.exists) {
+          const cloudConf = doc.data();
+          this._cache.adminConfig = cloudConf;
+          const local = this._getLocal();
+          local.adminConfig = cloudConf;
+          this._saveLocal(local, false);
+          this._notifySubscribers('adminConfig', cloudConf);
+        }
+      }, (err) => console.warn('[DB Realtime] Lỗi lắng nghe admin config:', err));
+    } catch (e) {}
+  },
+
   // Khởi tạo Database
   async init() {
+    // 0. Khởi tạo bộ nhớ đệm In-Memory siêu tốc từ LocalStorage
+    this._initCache();
+
     // 1. Kiểm tra cấu hình Firebase: ưu tiên cấu hình tùy chỉnh máy Admin, sau đó cấu hình mặc định toàn trường trong APP_CONFIG
     try {
       let config = null;
@@ -24,47 +125,19 @@ const DB = {
         this.isFirebaseActive = true;
         console.log('[DB] Kết nối Firebase Firestore Cloud thành công cho toàn trường!');
 
-        // Tự động kiểm tra nếu Cloud chưa có dữ liệu thì đẩy dữ liệu cục bộ lên Cloud
-        try {
-          const snapCheck = await this.firestore.collection('students').limit(1).get();
+        // Gắn lắng nghe Realtime chạy nền (hoàn toàn không chặn luồng khởi động app)
+        this._attachRealtimeListeners();
+
+        // Tự động kiểm tra Cloud ngầm: Nếu Cloud chưa có dữ liệu thì đẩy dữ liệu cục bộ lên Cloud
+        this.firestore.collection('students').limit(1).get().then(snapCheck => {
           if (snapCheck.empty) {
             const local = this._getLocal();
             if (local && local.students && local.students.length > 0) {
               console.log(`[DB] Đang tự động tải ${local.students.length} học sinh và đề thi lên Firebase Cloud...`);
-              await this.syncLocalToFirestore(local);
+              this.syncLocalToFirestore(local);
             }
           }
-        } catch (e) {
-          console.warn('[DB] Lưu ý khi kiểm tra dữ liệu Cloud:', e);
-        }
-
-        // Đồng bộ dữ liệu mới nhất từ Cloud về Local Cache của thiết bị
-        try {
-          // A. Đồng bộ Đề thi từ Cloud
-          const snapExams = await this.firestore.collection('exams').get();
-          if (!snapExams.empty) {
-            const cloudExams = snapExams.docs.map(d => ({ id: d.id, ...d.data() }));
-            const local = this._getLocal();
-            local.exams = cloudExams;
-            // Xóa bỏ các bài nộp mẫu cũ nếu có
-            if (local.submissions && local.submissions.some(s => s.examId === 'exam_sample_12hk1')) {
-              local.submissions = local.submissions.filter(s => s.examId !== 'exam_sample_12hk1');
-            }
-            this._saveLocal(local);
-            console.log(`[DB] Đã đồng bộ ${cloudExams.length} đề thi mới từ Firebase Cloud!`);
-          }
-
-          // B. Đồng bộ Học sinh từ Cloud
-          const snapStudents = await this.firestore.collection('students').get();
-          if (!snapStudents.empty) {
-            const cloudStudents = snapStudents.docs.map(d => ({ id: d.id, ...d.data() }));
-            const local = this._getLocal();
-            local.students = cloudStudents;
-            this._saveLocal(local);
-          }
-        } catch (syncErr) {
-          console.warn('[DB] Lưu ý khi đồng bộ Cloud về máy:', syncErr);
-        }
+        }).catch(e => console.warn('[DB] Lưu ý khi kiểm tra dữ liệu Cloud:', e));
 
         return;
       }
@@ -83,16 +156,16 @@ const DB = {
     if (!localData || !localData.students || localData.students.length === 0 || !localData.exams || localData.exams.length === 0) {
       console.log('[DB] Nạp dữ liệu mẫu chuẩn vào CSDL');
       const initialDb = {
-        students: SampleData.students || [],
-        exams: SampleData.exams || [],
-        submissions: SampleData.submissions || [],
+        students: (typeof SampleData !== 'undefined' && SampleData.students) ? SampleData.students : [],
+        exams: (typeof SampleData !== 'undefined' && SampleData.exams) ? SampleData.exams : [],
+        submissions: (typeof SampleData !== 'undefined' && SampleData.submissions) ? SampleData.submissions : [],
         adminConfig: localData ? localData.adminConfig : null
       };
-      localStorage.setItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB, JSON.stringify(initialDb));
+      this._saveLocal(initialDb, false);
     } else {
       // Tự động đồng bộ và bổ sung học sinh mới từ SampleData (87 học sinh) vào CSDL máy hiện tại
       let modified = false;
-      if (Array.isArray(localData.students) && Array.isArray(SampleData.students)) {
+      if (Array.isArray(localData.students) && typeof SampleData !== 'undefined' && Array.isArray(SampleData.students)) {
         const existingMap = new Map();
         localData.students.forEach(s => {
           if (s.username) existingMap.set(s.username.toLowerCase(), s);
@@ -123,7 +196,7 @@ const DB = {
       }
 
       // Cập nhật chi tiết kết quả bài nộp mẫu nếu bị thiếu subDetails
-      if (Array.isArray(localData.submissions) && Array.isArray(SampleData.submissions)) {
+      if (Array.isArray(localData.submissions) && typeof SampleData !== 'undefined' && Array.isArray(SampleData.submissions)) {
         SampleData.submissions.forEach(sampleSub => {
           const idx = localData.submissions.findIndex(s => s.id === sampleSub.id);
           if (idx >= 0) {
@@ -136,7 +209,7 @@ const DB = {
 
       if (modified) {
         console.log(`[DB] Đã cập nhật CSDL cục bộ: ${localData.students.length} học sinh`);
-        localStorage.setItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB, JSON.stringify(localData));
+        this._saveLocal(localData, false);
       }
     }
   },
@@ -153,46 +226,70 @@ const DB = {
 
     // Fallback nếu rỗng
     return {
-      students: SampleData.students || [],
-      exams: SampleData.exams || [],
-      submissions: SampleData.submissions || [],
+      students: (typeof SampleData !== 'undefined' && SampleData.students) ? SampleData.students : [],
+      exams: (typeof SampleData !== 'undefined' && SampleData.exams) ? SampleData.exams : [],
+      submissions: (typeof SampleData !== 'undefined' && SampleData.submissions) ? SampleData.submissions : [],
       adminConfig: null
     };
   },
 
-  // Lưu bản ghi Local
-  _saveLocal(dbObj) {
+  // Lưu bản ghi Local và cập nhật tức thì Cache In-Memory
+  _saveLocal(dbObj, broadcast = true) {
+    if (dbObj.students) this._cache.students = dbObj.students;
+    if (dbObj.exams) this._cache.exams = dbObj.exams;
+    if (dbObj.submissions) this._cache.submissions = dbObj.submissions;
+    if (dbObj.adminConfig !== undefined) this._cache.adminConfig = dbObj.adminConfig;
+
     try {
       localStorage.setItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB, JSON.stringify(dbObj));
     } catch (e) {
       console.warn('Lỗi ghi LocalStorage:', e);
     }
 
-    // Phát thông báo qua BroadcastChannel (nếu trình duyệt hỗ trợ)
-    try {
-      if (typeof BroadcastChannel !== 'undefined') {
-        const bc = new BroadcastChannel('azota_data_sync');
-        bc.postMessage({ type: 'DB_UPDATED', timestamp: Date.now() });
-        bc.close();
-      }
-    } catch (e) {}
+    if (broadcast) {
+      // Phát thông báo qua BroadcastChannel (nếu trình duyệt hỗ trợ)
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('azota_data_sync');
+          bc.postMessage({ type: 'DB_UPDATED', timestamp: Date.now() });
+          bc.close();
+        }
+      } catch (e) {}
+    }
   },
 
   // ================= ADMIN CONFIG & DEVICE LOCK =================
-  async getAdminConfig() {
+  async getAdminConfig(forceFresh = false) {
+    this._initCache();
+    if (!forceFresh && this._cache.adminConfig !== null) {
+      return this._cache.adminConfig;
+    }
+
     if (this.isFirebaseActive && this.firestore) {
       try {
         const doc = await this.firestore.collection('admin_config').doc('device_lock').get();
-        if (doc.exists) return doc.data();
+        if (doc.exists) {
+          const data = doc.data();
+          this._cache.adminConfig = data;
+          const db = this._getLocal();
+          db.adminConfig = data;
+          this._saveLocal(db, false);
+          return data;
+        }
       } catch (e) {}
     }
+
     const db = this._getLocal();
-    return db.adminConfig || null;
+    this._cache.adminConfig = db.adminConfig || null;
+    return this._cache.adminConfig;
   },
 
   async saveAdminConfig(config) {
+    this._initCache();
+    this._cache.adminConfig = { ...(this._cache.adminConfig || {}), ...config };
+
     const db = this._getLocal();
-    db.adminConfig = { ...db.adminConfig, ...config };
+    db.adminConfig = this._cache.adminConfig;
     this._saveLocal(db);
 
     if (this.isFirebaseActive && this.firestore) {
@@ -200,19 +297,33 @@ const DB = {
         await this.firestore.collection('admin_config').doc('device_lock').set(config, { merge: true });
       } catch (e) {}
     }
-    return db.adminConfig;
+    return this._cache.adminConfig;
   },
 
   // ================= HỌC SINH (STUDENTS) =================
-  async getStudents() {
+  async getStudents(forceFresh = false) {
+    this._initCache();
+    if (!forceFresh && this._cache.students && this._cache.students.length > 0) {
+      return this._cache.students;
+    }
+
     if (this.isFirebaseActive && this.firestore) {
       try {
         const snap = await this.firestore.collection('students').get();
-        if (!snap.empty) return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!snap.empty) {
+          const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          this._cache.students = students;
+          const local = this._getLocal();
+          local.students = students;
+          this._saveLocal(local, false);
+          return students;
+        }
       } catch (e) {}
     }
+
     const db = this._getLocal();
-    return db.students || [];
+    this._cache.students = db.students || [];
+    return this._cache.students;
   },
 
   async getStudentByUsername(username) {
@@ -221,8 +332,8 @@ const DB = {
   },
 
   async saveStudent(studentData) {
-    const db = this._getLocal();
-    const students = db.students || [];
+    this._initCache();
+    const students = this._cache.students || [];
     const index = students.findIndex(s => s.id === studentData.id);
 
     if (index >= 0) {
@@ -230,6 +341,9 @@ const DB = {
     } else {
       students.push(studentData);
     }
+    this._cache.students = students;
+
+    const db = this._getLocal();
     db.students = students;
     this._saveLocal(db);
 
@@ -249,17 +363,20 @@ const DB = {
       hash = newPassword;
     }
 
-    const db = this._getLocal();
-    const students = db.students || [];
+    this._initCache();
+    const students = this._cache.students || [];
     const index = students.findIndex(s => s.id === studentId);
     if (index >= 0) {
       students[index].passwordHash = hash;
       students[index].initialPassword = newPassword;
       students[index].mustChangePassword = false;
       students[index].updatedAt = new Date().toISOString();
-      db.students = students;
-      this._saveLocal(db);
+      this._cache.students = students;
     }
+
+    const db = this._getLocal();
+    db.students = students;
+    this._saveLocal(db);
 
     if (this.isFirebaseActive && this.firestore) {
       try {
@@ -298,8 +415,8 @@ const DB = {
   },
 
   async saveStudentsBulk(newStudentsList) {
-    const db = this._getLocal();
-    const existing = db.students || [];
+    this._initCache();
+    const existing = [...(this._cache.students || [])];
     
     newStudentsList.forEach(st => {
       const idx = existing.findIndex(e => e.username === st.username);
@@ -310,6 +427,8 @@ const DB = {
       }
     });
 
+    this._cache.students = existing;
+    const db = this._getLocal();
     db.students = existing;
     this._saveLocal(db);
 
@@ -327,8 +446,10 @@ const DB = {
   },
 
   async deleteStudent(studentId) {
+    this._initCache();
+    this._cache.students = (this._cache.students || []).filter(s => s.id !== studentId);
     const db = this._getLocal();
-    db.students = (db.students || []).filter(s => s.id !== studentId);
+    db.students = this._cache.students;
     this._saveLocal(db);
 
     if (this.isFirebaseActive && this.firestore) {
@@ -340,35 +461,41 @@ const DB = {
   },
 
   // ================= ĐỀ KIỂM TRA (EXAMS) =================
-  async getExams(studentClass = null, role = 'admin') {
-    let allExams = [];
-    let cloudLoaded = false;
-    if (this.isFirebaseActive && this.firestore) {
-      try {
-        const snap = await this.firestore.collection('exams').get();
-        allExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        cloudLoaded = true;
-        // Cập nhật bộ nhớ đệm cục bộ
+  async getExams(studentClass = null, role = 'admin', forceFresh = false) {
+    this._initCache();
+    let allExams = this._cache.exams || [];
+
+    if (forceFresh || allExams.length === 0) {
+      if (this.isFirebaseActive && this.firestore) {
+        try {
+          const snap = await this.firestore.collection('exams').get();
+          if (!snap.empty) {
+            allExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            this._cache.exams = allExams;
+            const db = this._getLocal();
+            db.exams = allExams;
+            this._saveLocal(db, false);
+          }
+        } catch (e) {
+          console.warn('[DB] Lỗi tải đề từ Cloud:', e);
+        }
+      }
+
+      if (allExams.length === 0) {
         const db = this._getLocal();
-        db.exams = allExams;
-        this._saveLocal(db);
-      } catch (e) {
-        console.warn('[DB] Lỗi tải đề từ Cloud:', e);
+        allExams = db.exams || [];
+        this._cache.exams = allExams;
       }
     }
 
-    if (!cloudLoaded) {
-      const db = this._getLocal();
-      allExams = db.exams || [];
-    }
-
-    // Sắp xếp đề thi mới nhất lên trên
-    allExams.sort((a, b) => new Date(b.createdAt || b.openTime || 0) - new Date(a.createdAt || a.openTime || 0));
+    // Sắp xếp đề thi mới nhất lên trên (xử lý tức thì trong RAM)
+    const sorted = [...allExams].sort((a, b) => new Date(b.createdAt || b.openTime || 0) - new Date(a.createdAt || a.openTime || 0));
 
     // Nếu là học sinh: lọc bài phù hợp và loại bỏ đáp án đúng
     if (role === 'student') {
+      let filtered = sorted;
       if (studentClass) {
-        allExams = allExams.filter(ex => {
+        filtered = sorted.filter(ex => {
           // 1. Không giới hạn lớp hoặc mảng rỗng -> cho phép toàn trường
           if (!ex.assignedClasses || ex.assignedClasses.length === 0) return true;
           // 2. Trực tiếp có tên lớp của học sinh (ví dụ "LỚP 10", "12A1")
@@ -382,29 +509,35 @@ const DB = {
           return false;
         });
       }
-      return allExams.map(ex => GradingEngine.stripAnswersForStudent(ex));
+      return filtered.map(ex => GradingEngine.stripAnswersForStudent(ex));
     }
 
-    return allExams;
+    return sorted;
   },
 
   async getExamById(examId, role = 'admin') {
-    let exam = null;
-    if (this.isFirebaseActive && this.firestore) {
-      try {
-        const doc = await this.firestore.collection('exams').doc(examId).get();
-        if (doc.exists) exam = { id: doc.id, ...doc.data() };
-      } catch (e) {}
-    }
+    this._initCache();
+    let exam = (this._cache.exams || []).find(e => e.id === examId);
 
     if (!exam) {
       const db = this._getLocal();
       exam = (db.exams || []).find(e => e.id === examId);
     }
 
-    if (!exam) {
-      // Tìm trong SampleData
-      exam = (SampleData.exams || []).find(e => e.id === examId);
+    if (!exam && typeof SampleData !== 'undefined' && SampleData.exams) {
+      exam = SampleData.exams.find(e => e.id === examId);
+    }
+
+    if (!exam && this.isFirebaseActive && this.firestore) {
+      try {
+        const doc = await this.firestore.collection('exams').doc(examId).get();
+        if (doc.exists) {
+          exam = { id: doc.id, ...doc.data() };
+          if (this._cache.exams) {
+            this._cache.exams.push(exam);
+          }
+        }
+      } catch (e) {}
     }
 
     if (!exam) return null;
@@ -416,8 +549,8 @@ const DB = {
   },
 
   async saveExam(examData) {
-    const db = this._getLocal();
-    const exams = db.exams || [];
+    this._initCache();
+    const exams = this._cache.exams || [];
     const idx = exams.findIndex(e => e.id === examData.id);
 
     if (idx >= 0) {
@@ -425,6 +558,9 @@ const DB = {
     } else {
       exams.push({ ...examData, createdAt: new Date().toISOString() });
     }
+    this._cache.exams = exams;
+
+    const db = this._getLocal();
     db.exams = exams;
     this._saveLocal(db);
 
@@ -437,9 +573,13 @@ const DB = {
   },
 
   async deleteExam(examId) {
+    this._initCache();
+    this._cache.exams = (this._cache.exams || []).filter(e => e.id !== examId);
+    this._cache.submissions = (this._cache.submissions || []).filter(s => s.examId !== examId);
+
     const db = this._getLocal();
-    db.exams = (db.exams || []).filter(e => e.id !== examId);
-    db.submissions = (db.submissions || []).filter(s => s.examId !== examId);
+    db.exams = this._cache.exams;
+    db.submissions = this._cache.submissions;
     this._saveLocal(db);
 
     if (this.isFirebaseActive && this.firestore) {
@@ -452,49 +592,42 @@ const DB = {
 
   // Lắng nghe thay đổi Đề thi từ Firebase Cloud theo thời gian thực (Real-time updates)
   listenExams(callback) {
-    if (this.isFirebaseActive && this.firestore) {
-      try {
-        console.log('[DB] Đang kích hoạt lắng nghe Đề thi Firebase Cloud thời gian thực...');
-        return this.firestore.collection('exams').onSnapshot((snap) => {
-          const cloudExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          cloudExams.sort((a, b) => new Date(b.createdAt || b.openTime || 0) - new Date(a.createdAt || a.openTime || 0));
-          const db = this._getLocal();
-          db.exams = cloudExams;
-          this._saveLocal(db);
-          console.log(`[DB Realtime] Ngân hàng đề thi vừa cập nhật: ${cloudExams.length} đề`);
-          if (typeof callback === 'function') {
-            callback(cloudExams);
-          }
-        }, (err) => {
-          console.warn('[DB Realtime] Lỗi lắng nghe đề thi Firestore:', err);
-        });
-      } catch (e) {
-        console.warn('[DB] Không thể thiết lập Firestore onSnapshot listener:', e);
+    this.subscribe((type, data) => {
+      if (type === 'exams' && typeof callback === 'function') {
+        callback(data);
       }
-    }
-    return null;
+    });
   },
 
   // ================= BÀI NỘP (SUBMISSIONS) =================
-  async getSubmissions(examId = null, studentId = null) {
-    if (this.isFirebaseActive && this.firestore) {
-      try {
-        let query = this.firestore.collection('submissions');
-        if (examId) query = query.where('examId', '==', examId);
-        if (studentId) query = query.where('studentId', '==', studentId);
-        const snap = await query.get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch (e) {
-        console.warn('[DB] Lỗi tải bài nộp từ Firestore:', e);
+  async getSubmissions(examId = null, studentId = null, forceFresh = false) {
+    this._initCache();
+    let allSubs = this._cache.submissions;
+
+    if (forceFresh || allSubs === null) {
+      if (this.isFirebaseActive && this.firestore) {
+        try {
+          const snap = await this.firestore.collection('submissions').get();
+          allSubs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          this._cache.submissions = allSubs;
+          const db = this._getLocal();
+          db.submissions = allSubs;
+          this._saveLocal(db, false);
+        } catch (e) {
+          console.warn('[DB] Lỗi tải bài nộp từ Firestore:', e);
+        }
+      }
+      if (allSubs === null) {
+        const db = this._getLocal();
+        allSubs = db.submissions || [];
+        this._cache.submissions = allSubs;
       }
     }
 
-    // Fallback cục bộ (chỉ khi offline hoặc chưa kết nối Firebase)
-    const db = this._getLocal();
-    let allSubs = db.submissions || [];
-    if (examId) allSubs = allSubs.filter(s => s.examId === examId);
-    if (studentId) allSubs = allSubs.filter(s => s.studentId === studentId);
-    return allSubs;
+    let filtered = allSubs || [];
+    if (examId) filtered = filtered.filter(s => s.examId === examId);
+    if (studentId) filtered = filtered.filter(s => s.studentId === studentId);
+    return filtered;
   },
 
   async submitExam(submissionData) {
@@ -517,9 +650,12 @@ const DB = {
       itemResults: gradeResult.itemResults
     };
 
-    const db = this._getLocal();
-    const subs = db.submissions || [];
+    this._initCache();
+    const subs = this._cache.submissions || [];
     subs.push(completeSubmission);
+    this._cache.submissions = subs;
+
+    const db = this._getLocal();
     db.submissions = subs;
     this._saveLocal(db);
 
@@ -617,9 +753,15 @@ const DB = {
   // Khôi phục dữ liệu mẫu
   resetToSampleData() {
     const resetDb = {
-      students: SampleData.students || [],
-      exams: SampleData.exams || [],
-      submissions: SampleData.submissions || [],
+      students: (typeof SampleData !== 'undefined' && SampleData.students) ? SampleData.students : [],
+      exams: (typeof SampleData !== 'undefined' && SampleData.exams) ? SampleData.exams : [],
+      submissions: (typeof SampleData !== 'undefined' && SampleData.submissions) ? SampleData.submissions : [],
+      adminConfig: null
+    };
+    this._cache = {
+      students: [...resetDb.students],
+      exams: [...resetDb.exams],
+      submissions: [...resetDb.submissions],
       adminConfig: null
     };
     localStorage.setItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB, JSON.stringify(resetDb));

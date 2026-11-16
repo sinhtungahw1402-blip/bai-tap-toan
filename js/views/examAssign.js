@@ -2,9 +2,9 @@
 const ExamAssign = {
   selectedExamId: null,
 
-  async render(presetExamId) {
-    const exams = await DB.getExams(null, 'admin');
-    const students = await DB.getStudents();
+  async render(presetExamId = null, presetExams = null, presetStudents = null) {
+    const exams = presetExams || await DB.getExams(null, 'admin');
+    const students = presetStudents || await DB.getStudents();
     const classes = Array.from(new Set(students.map(s => s.class).filter(Boolean))).sort();
 
     if (!this.selectedExamId && exams.length > 0) {

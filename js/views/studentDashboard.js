@@ -1,6 +1,7 @@
 // Azota Toán - Student Dashboard View (Luôn hiển thị đề thi, Nút vào thi trực quan)
 const StudentDashboard = {
   activeTab: 'active', // 'active' | 'due_soon' | 'completed' | 'expired' | 'history'
+  _currentData: null,
 
   async render(student) {
     if (!student) {
@@ -62,6 +63,9 @@ const StudentDashboard = {
     if (activeExams.length === 0 && exams.length > 0) {
       exams.forEach(ex => activeExams.push({ exam: ex, submission: subMap[ex.id] }));
     }
+
+    // Lưu dữ liệu hiện tại vào memory để switchTab phản hồi tức thì trong 0ms
+    this._currentData = { activeExams, dueSoonExams, completedExams, expiredExams, submissions, exams, student };
 
     return `
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -137,8 +141,9 @@ const StudentDashboard = {
     const isActive = this.activeTab === tabKey;
     return `
       <button
+        data-student-tab="${tabKey}"
         onclick="window.StudentDashboard.switchTab('${tabKey}')"
-        class="whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition ${
+        class="student-nav-tab whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition ${
           isActive
             ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
             : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80'
@@ -406,7 +411,30 @@ const StudentDashboard = {
 
   switchTab(tab) {
     this.activeTab = tab;
-    window.App.renderApp();
+    const container = document.getElementById('studentTabContent');
+
+    if (container && this._currentData) {
+      // 1. Cập nhật nút tab ngay tức khắc trong DOM (0ms)
+      const buttons = document.querySelectorAll('.student-nav-tab');
+      buttons.forEach(btn => {
+        const key = btn.getAttribute('data-student-tab');
+        if (key === tab) {
+          btn.className = 'student-nav-tab whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition bg-blue-600 text-white shadow-md shadow-blue-500/20';
+        } else {
+          btn.className = 'student-nav-tab whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80';
+        }
+      });
+
+      // 2. Cập nhật nội dung tab trực tiếp vào container mà không làm giật hay vẽ lại toàn bộ trang
+      container.innerHTML = this._renderTabContent(tab, this._currentData);
+
+      // 3. Render công thức Toán KaTeX cục bộ bên trong container
+      if (typeof MathRenderer !== 'undefined') {
+        MathRenderer.renderElement(container);
+      }
+    } else {
+      window.App.renderApp();
+    }
   }
 };
 

@@ -5,8 +5,8 @@ const ExamEditor = {
   excelErrors: [],
   editingQuestionIndex: -1,
 
-  async render() {
-    const exams = await DB.getExams(null, 'admin');
+  async render(presetExams = null) {
+    const exams = presetExams || await DB.getExams(null, 'admin');
 
     if (this.activeTab === 'edit' && this.currentExam) {
       return this._renderEditExamScreen();
