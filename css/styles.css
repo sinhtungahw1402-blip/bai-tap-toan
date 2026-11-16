@@ -49,6 +49,30 @@ body {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   overflow-x: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ==========================================================================
+   SAFE AREA & MOBILE NOTCH / STATUS BAR SUPPORT
+   Tự động dịch nội dung xuống dưới tránh bị che bởi tai thỏ, Dynamic Island,
+   camera nốt ruồi và thanh trạng thái pin/sóng/giờ trên mọi điện thoại.
+   ========================================================================== */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-header {
+  padding-top: env(safe-area-inset-top, 0px);
+  transition: padding-top 0.2s ease-in-out;
+}
+
+/* Áp dụng khoảng đệm an toàn dịch xuống trên màn hình điện thoại di động */
+@media (max-width: 768px) {
+  .safe-area-header {
+    /* calc(max(env, 12px) + 6px): dịch xuống dưới đủ để tránh hoàn toàn tai thỏ và thanh pin/sóng */
+    padding-top: calc(max(env(safe-area-inset-top, 0px), 12px) + 6px) !important;
+  }
 }
 
 /* Custom Scrollbar */

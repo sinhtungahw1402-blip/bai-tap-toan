@@ -248,7 +248,7 @@ const ExamTaking = {
       <div class="anti-cheat-protected min-h-[calc(100vh-4rem)] flex flex-col bg-slate-50 dark:bg-slate-950">
         
         <!-- Top Sticky Header -->
-        <div class="sticky top-16 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-sm">
+        <div class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-sm safe-area-header">
           <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
             <!-- Left Info -->
