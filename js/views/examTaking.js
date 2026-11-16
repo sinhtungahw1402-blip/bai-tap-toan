@@ -12,6 +12,12 @@ const ExamTaking = {
   tabSwitches: 0,
   tabSwitchLogs: [],
   isSubmitting: false,
+  isCurrentlyAway: false,
+  lastLeftTime: null,
+  currentLeaveReason: '',
+  hasRequestedFullscreen: false,
+  initialWidth: 0,
+  initialHeight: 0,
 
   // Khởi động phòng thi
   async init(examId, student) {
@@ -196,64 +202,370 @@ const ExamTaking = {
 
   _setupAntiCheat() {
     const anti = this.exam.antiCheat || {};
+    this.initialWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    this.initialHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+    this.isCurrentlyAway = false;
+    this.lastLeftTime = null;
 
-    // 1. Chống copy & chuột phải
-    if (anti.disableContextMenu) {
-      document.addEventListener('contextmenu', this._preventContextMenu);
-    }
-    if (anti.disableCopy) {
-      document.addEventListener('copy', this._preventCopy);
-      document.addEventListener('cut', this._preventCopy);
+    // Gắn class css bảo vệ vào body
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.add('in-exam');
     }
 
-    // 2. Bắt sự kiện chuyển tab / ẩn màn hình (chính xác, không bị false positive khi mở bàn phím điện thoại)
-    document.addEventListener('visibilitychange', this._handleVisibilityChange);
+    // Bindings để removeEventListener chuẩn xác
+    this._boundContextMenu = (e) => this._preventContextMenu(e);
+    this._boundCopy = (e) => this._preventCopy(e);
+    this._boundPaste = (e) => this._preventPaste(e);
+    this._boundSelect = (e) => this._preventSelect(e);
+    this._boundDrag = (e) => this._preventDrag(e);
+    this._boundKeyDown = (e) => this._handleKeyDown(e);
+    this._boundVisibilityChange = () => this._handleVisibilityChange();
+    this._boundPageHide = () => this._handlePageHide();
+    this._boundWindowBlur = () => this._handleWindowBlur();
+    this._boundWindowFocus = () => this._handleWindowFocus();
+    this._boundFullscreenChange = () => this._handleFullscreenChange();
+    this._boundWindowResize = () => this._handleWindowResize();
+    this._boundBeforePrint = () => this._handleBeforePrint();
+
+    // 1. Chống copy, chuột phải, chọn văn bản & kéo thả
+    if (anti.disableContextMenu !== false) {
+      document.addEventListener('contextmenu', this._boundContextMenu);
+    }
+    if (anti.disableCopy !== false) {
+      document.addEventListener('copy', this._boundCopy);
+      document.addEventListener('cut', this._boundCopy);
+      document.addEventListener('paste', this._boundPaste);
+      document.addEventListener('selectstart', this._boundSelect);
+      document.addEventListener('dragstart', this._boundDrag);
+    }
+
+    // 2. Chặn các tổ hợp phím gian lận (F12, Ctrl+U, Ctrl+P, DevTools...)
+    document.addEventListener('keydown', this._boundKeyDown);
+
+    // 3. Giám sát chuyển tab, đổi ứng dụng & mất tiêu điểm (Cực nhạy trên cả Mobile & PC)
+    document.addEventListener('visibilitychange', this._boundVisibilityChange);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', this._boundPageHide);
+      window.addEventListener('blur', this._boundWindowBlur);
+      window.addEventListener('focus', this._boundWindowFocus);
+      window.addEventListener('resize', this._boundWindowResize);
+      window.addEventListener('beforeprint', this._boundBeforePrint);
+    }
+
+    // 4. Giám sát trạng thái toàn màn hình
+    document.addEventListener('fullscreenchange', this._boundFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', this._boundFullscreenChange);
+    document.addEventListener('mozfullscreenchange', this._boundFullscreenChange);
   },
 
   _cleanupAntiCheat() {
-    document.removeEventListener('contextmenu', this._preventContextMenu);
-    document.removeEventListener('copy', this._preventCopy);
-    document.removeEventListener('cut', this._preventCopy);
-    document.removeEventListener('visibilitychange', this._handleVisibilityChange);
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.remove('in-exam');
+    }
+    if (this._boundContextMenu) document.removeEventListener('contextmenu', this._boundContextMenu);
+    if (this._boundCopy) {
+      document.removeEventListener('copy', this._boundCopy);
+      document.removeEventListener('cut', this._boundCopy);
+      document.removeEventListener('paste', this._boundPaste);
+      document.removeEventListener('selectstart', this._boundSelect);
+      document.removeEventListener('dragstart', this._boundDrag);
+    }
+    if (this._boundKeyDown) document.removeEventListener('keydown', this._boundKeyDown);
+    if (this._boundVisibilityChange) document.removeEventListener('visibilitychange', this._boundVisibilityChange);
+    if (typeof window !== 'undefined') {
+      if (this._boundPageHide) window.removeEventListener('pagehide', this._boundPageHide);
+      if (this._boundWindowBlur) window.removeEventListener('blur', this._boundWindowBlur);
+      if (this._boundWindowFocus) window.removeEventListener('focus', this._boundWindowFocus);
+      if (this._boundWindowResize) window.removeEventListener('resize', this._boundWindowResize);
+      if (this._boundBeforePrint) window.removeEventListener('beforeprint', this._boundBeforePrint);
+    }
+    if (this._boundFullscreenChange) {
+      document.removeEventListener('fullscreenchange', this._boundFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', this._boundFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', this._boundFullscreenChange);
+    }
     if (this.timerInterval) clearInterval(this.timerInterval);
   },
 
-  _preventContextMenu(e) { e.preventDefault(); },
-  _preventCopy(e) { e.preventDefault(); },
+  _preventContextMenu(e) {
+    e.preventDefault();
+    this._showQuickSecurityToast('⚠️ Đã vô hiệu hóa chuột phải để bảo vệ đề thi!');
+    return false;
+  },
 
-  _handleVisibilityChange() {
-    if (document.hidden && !ExamTaking.isSubmitting) {
-      ExamTaking._recordCheatIncident('Chuyển sang ứng dụng hoặc tab khác');
+  _preventCopy(e) {
+    e.preventDefault();
+    this._showQuickSecurityToast('⚠️ Cấm sao chép nội dung câu hỏi bài thi!');
+    return false;
+  },
+
+  _preventPaste(e) {
+    // Chỉ cho phép dán ở ô nhập số Phần III
+    const target = e.target;
+    if (target && target.tagName === 'INPUT' && target.id && target.id.startsWith('part3_input_')) {
+      return;
+    }
+    e.preventDefault();
+    this._showQuickSecurityToast('⚠️ Không thể dán nội dung trong phòng thi!');
+    return false;
+  },
+
+  _preventSelect(e) {
+    const target = e.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+    e.preventDefault();
+    return false;
+  },
+
+  _preventDrag(e) {
+    e.preventDefault();
+    return false;
+  },
+
+  _handleKeyDown(e) {
+    if (ExamTaking.isSubmitting) return;
+
+    // F12 -> Mở DevTools
+    if (e.key === 'F12' || e.keyCode === 123) {
+      e.preventDefault();
+      ExamTaking._recordCheatIncident('Cố gắng mở công cụ phát triển (F12 / DevTools)');
+      return false;
+    }
+
+    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+    if (isCtrlOrCmd) {
+      const key = (e.key || '').toLowerCase();
+      // Ctrl+U, Ctrl+S, Ctrl+P
+      if (key === 'u' || key === 's' || key === 'p') {
+        e.preventDefault();
+        ExamTaking._recordCheatIncident(`Cố gắng sử dụng phím tắt Ctrl+${key.toUpperCase()}`);
+        return false;
+      }
+      // Ctrl+Shift+I / J / C (DevTools Inspect)
+      if (e.shiftKey && (key === 'i' || key === 'j' || key === 'c')) {
+        e.preventDefault();
+        ExamTaking._recordCheatIncident('Cố gắng kiểm tra phần tử trang thi (Inspect)');
+        return false;
+      }
+      // Ctrl+C, Ctrl+A, Ctrl+X trên câu hỏi
+      const target = e.target;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      if (!isInput && (key === 'c' || key === 'x' || key === 'a')) {
+        e.preventDefault();
+        ExamTaking._showQuickSecurityToast('⚠️ Cấm sao chép hoặc bôi đen toàn bộ đề thi!');
+        return false;
+      }
     }
   },
 
+  _handleBeforePrint() {
+    ExamTaking._recordCheatIncident('Cố gắng in hoặc xuất đề thi thành PDF');
+  },
+
+  _triggerLeave(reason) {
+    if (this.isSubmitting || this.isCurrentlyAway) return;
+    this.isCurrentlyAway = true;
+    this.lastLeftTime = Date.now();
+    this.currentLeaveReason = reason || 'Rời màn hình thi';
+  },
+
+  _triggerReturn() {
+    if (!this.isCurrentlyAway) return;
+    this.isCurrentlyAway = false;
+    const awayMs = Date.now() - (this.lastLeftTime || Date.now());
+    const awaySec = Math.max(1, Math.round(awayMs / 1000));
+    const reason = this.currentLeaveReason || 'Rời màn hình thi';
+    this._recordCheatIncident(`${reason} (Vắng mặt ${awaySec} giây)`);
+  },
+
+  _handleVisibilityChange() {
+    if (document.hidden) {
+      this._triggerLeave('Chuyển sang ứng dụng hoặc tab khác');
+    } else {
+      this._triggerReturn();
+    }
+  },
+
+  _handlePageHide() {
+    this._triggerLeave('Thoát ứng dụng trình duyệt');
+  },
+
   _handleWindowBlur() {
-    if (!ExamTaking.isSubmitting) {
-      ExamTaking._recordCheatIncident('Rời khỏi cửa sổ bài thi');
+    // Tránh false-positive khi mở bàn phím ảo gõ câu điền số
+    if (typeof document !== 'undefined') {
+      const activeTag = document.activeElement ? document.activeElement.tagName : '';
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+    }
+    this._triggerLeave('Rời cửa sổ làm bài thi');
+  },
+
+  _handleWindowFocus() {
+    this._triggerReturn();
+  },
+
+  _handleFullscreenChange() {
+    if (typeof document === 'undefined') return;
+    const isFS = Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+    const fsBtn = document.getElementById('examFullscreenToggleBtn');
+    if (fsBtn) {
+      fsBtn.innerHTML = isFS
+        ? '<span>🗗</span> <span class="hidden sm:inline">Thu nhỏ</span>'
+        : '<span>⛶</span> <span class="hidden sm:inline">Toàn màn hình</span>';
+    }
+    if (!isFS && this.hasRequestedFullscreen && !this.isSubmitting) {
+      this._recordCheatIncident('Thoát khỏi chế độ Toàn Màn Hình');
+    }
+  },
+
+  _handleWindowResize() {
+    if (this.isSubmitting || typeof window === 'undefined') return;
+    // Phát hiện chia đôi màn hình (Split screen trên PC hoặc Tablet)
+    if (this.initialWidth > 768 && window.innerWidth < this.initialWidth * 0.65) {
+      this._triggerLeave('Phát hiện chia đôi màn hình (Split-screen)');
+    }
+  },
+
+  toggleFullscreen() {
+    if (typeof document === 'undefined') return;
+    const docEl = document.documentElement;
+    const isFS = Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+    if (!isFS) {
+      this.hasRequestedFullscreen = true;
+      if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+      else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen().catch(() => {});
+      else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen().catch(() => {});
+      else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen().catch(() => {});
+    }
+  },
+
+  _playWarningBeep() {
+    try {
+      if (typeof window === 'undefined') return;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(580, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.35);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch (e) {}
+  },
+
+  _showQuickSecurityToast(msg) {
+    if (typeof document === 'undefined') return;
+    const toast = document.getElementById('examSecurityToast');
+    if (toast) {
+      toast.textContent = msg;
+      toast.classList.remove('hidden');
+      clearTimeout(this._toastTimeout);
+      this._toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2500);
     }
   },
 
   _recordCheatIncident(reason) {
+    if (this.isSubmitting) return;
+
     this.tabSwitches++;
     const timeStr = new Date().toLocaleTimeString('vi-VN');
     const logEntry = `${timeStr}: ${reason} (Lần ${this.tabSwitches})`;
     this.tabSwitchLogs.push(logEntry);
     this._saveProgress();
 
-    const maxAllowed = this.exam.antiCheat?.maxTabSwitches || 3;
-    const autoSubmit = this.exam.antiCheat?.autoSubmitOnExcess;
-
-    // Hiển thị cảnh báo cho học sinh
-    const banner = document.getElementById('cheatWarningBanner');
-    if (banner) {
-      banner.classList.remove('hidden');
-      document.getElementById('cheatWarningText').textContent = 
-        `⚠️ Cảnh báo gian lận: Bạn vừa rời khỏi màn hình thi! Đã ghi nhận lần thứ ${this.tabSwitches}/${maxAllowed}.`;
+    this._playWarningBeep();
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate([250, 100, 250]); } catch (e) {}
     }
 
-    if (autoSubmit && this.tabSwitches >= maxAllowed) {
-      alert(`Bạn đã rời màn hình thi quá ${maxAllowed} lần! Hệ thống tự động thu bài.`);
-      this.submitExam(true);
+    const maxAllowed = (this.exam.antiCheat && this.exam.antiCheat.maxTabSwitches !== undefined)
+      ? this.exam.antiCheat.maxTabSwitches
+      : 3;
+    const autoSubmit = this.exam.antiCheat ? this.exam.antiCheat.autoSubmitOnExcess !== false : true;
+
+    // Cập nhật banner trên trang
+    if (typeof document !== 'undefined') {
+      const banner = document.getElementById('cheatWarningBanner');
+      const warningText = document.getElementById('cheatWarningText');
+      if (banner && warningText) {
+        banner.classList.remove('hidden');
+        warningText.textContent = `⚠️ Đã ghi nhận ${this.tabSwitches}/${maxAllowed} lần rời khỏi màn hình thi!`;
+      }
+
+      // Kích hoạt Modal Cảnh Báo Khẩn Cấp Toàn Màn Hình
+      this._showCheatAlertModal(reason, this.tabSwitches, maxAllowed, autoSubmit);
+    }
+  },
+
+  _showCheatAlertModal(reason, currentCount, maxAllowed, autoSubmit) {
+    if (typeof document === 'undefined') return;
+    const modal = document.getElementById('cheatAlertModal');
+    if (!modal) return;
+
+    const isExceeded = autoSubmit && currentCount >= maxAllowed;
+
+    const titleEl = document.getElementById('cheatModalTitle');
+    const iconEl = document.getElementById('cheatModalIcon');
+    const descEl = document.getElementById('cheatModalDesc');
+    const countEl = document.getElementById('cheatModalCount');
+    const progressEl = document.getElementById('cheatModalProgressBar');
+    const reasonEl = document.getElementById('cheatModalReason');
+    const actionEl = document.getElementById('cheatModalActionBtn');
+
+    if (countEl) countEl.textContent = `${currentCount} / ${maxAllowed}`;
+    if (reasonEl) reasonEl.textContent = reason;
+
+    const pct = Math.min(100, Math.round((currentCount / maxAllowed) * 100));
+    if (progressEl) {
+      progressEl.style.width = `${pct}%`;
+      progressEl.className = currentCount >= maxAllowed
+        ? 'h-full bg-red-600 transition-all duration-300'
+        : 'h-full bg-amber-500 transition-all duration-300';
+    }
+
+    if (isExceeded) {
+      if (iconEl) iconEl.innerHTML = '⛔';
+      if (titleEl) titleEl.textContent = 'ĐÌNH CHỈ THI DO VI PHẠM GIAN LẬN!';
+      if (descEl) {
+        descEl.innerHTML = `Em đã rời khỏi màn hình làm bài <strong>${currentCount} lần</strong>, vượt quá giới hạn cho phép (tối đa <strong>${maxAllowed} lần</strong>).<br><br><span class="text-red-600 font-bold">Hệ thống đang tiến hành cưỡng chế thu bài và chuyển toàn bộ nhật ký vi phạm về cho Thầy giáo...</span>`;
+      }
+      if (actionEl) {
+        actionEl.innerHTML = '<span class="animate-spin inline-block mr-2">⏳</span> Đang tự động thu bài...';
+        actionEl.disabled = true;
+      }
+      modal.classList.remove('hidden');
+
+      setTimeout(() => {
+        this.submitExam(true);
+      }, 1800);
+
+    } else {
+      if (iconEl) iconEl.innerHTML = '🚨';
+      if (titleEl) titleEl.textContent = 'CẢNH BÁO VI PHẠM NỘI QUY PHÒNG THI';
+      if (descEl) {
+        descEl.innerHTML = `Hệ thống vừa phát hiện hành vi rời khỏi giao diện làm bài thi.<br>Mọi thao tác đã được lưu vào biên bản giám sát gửi Thầy giáo.<br><br><strong>LƯU Ý NGHIÊM KHẮC:</strong> Nếu vi phạm quá <strong>${maxAllowed} lần</strong>, hệ thống sẽ <strong>LẬP TỨC ĐÌNH CHỈ VÀ TỰ ĐỘNG THU BÀI!</strong>`;
+      }
+      if (actionEl) {
+        actionEl.innerHTML = '⚠️ Tôi Đã Hiểu & Quay Lại Làm Bài';
+        actionEl.disabled = false;
+        actionEl.onclick = () => {
+          modal.classList.add('hidden');
+          if (this.hasRequestedFullscreen) {
+            this.toggleFullscreen();
+          }
+        };
+      }
+      modal.classList.remove('hidden');
     }
   },
 
@@ -308,6 +620,17 @@ const ExamTaking = {
 
             <!-- Right Buttons -->
             <div class="flex items-center space-x-2">
+              <button
+                id="examFullscreenToggleBtn"
+                type="button"
+                onclick="window.ExamTaking.toggleFullscreen()"
+                class="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center space-x-1 transition shadow-sm"
+                title="Bật/Tắt Toàn Màn Hình"
+              >
+                <span>⛶</span>
+                <span class="hidden sm:inline">Toàn màn hình</span>
+              </button>
+
               <button
                 onclick="window.ExamTaking.openPaletteModal()"
                 class="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs"
@@ -569,6 +892,66 @@ const ExamTaking = {
           </div>
         </div>
       </div>
+
+      <!-- Fullscreen Cheat Alert Modal (Cảnh Báo Gian Lận Khẩn Cấp) -->
+      <div id="cheatAlertModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-bounce-once">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-red-500/80 dark:border-red-600 space-y-4 text-center">
+          
+          <div id="cheatModalIcon" class="w-16 h-16 rounded-3xl bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto text-3xl shadow-inner animate-pulse">
+            🚨
+          </div>
+
+          <div class="space-y-1">
+            <h3 id="cheatModalTitle" class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+              CẢNH BÁO VI PHẠM NỘI QUY PHÒNG THI
+            </h3>
+            <p class="text-xs text-red-500 font-bold">Hệ thống phát hiện hành vi nghi vấn gian lận</p>
+          </div>
+
+          <!-- Strike Counter & Progress Bar -->
+          <div class="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 space-y-2">
+            <div class="flex items-center justify-between text-xs font-extrabold text-slate-700 dark:text-slate-200">
+              <span>Lần vi phạm:</span>
+              <span id="cheatModalCount" class="text-red-600 dark:text-red-400 text-sm">1 / 3</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div id="cheatModalProgressBar" class="h-full bg-red-600 transition-all duration-300" style="width: 33%;"></div>
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1">
+              <span>Chi tiết:</span>
+              <span id="cheatModalReason" class="font-mono font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">Rời màn hình thi</span>
+            </div>
+          </div>
+
+          <div id="cheatModalDesc" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-left p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+            Hệ thống vừa phát hiện hành vi rời khỏi giao diện làm bài thi.
+          </div>
+
+          <div class="pt-2">
+            <button
+              type="button"
+              id="cheatModalActionBtn"
+              class="w-full py-3 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-sm shadow-lg shadow-red-600/30 active:scale-95 transition"
+            >
+              ⚠️ Tôi Đã Hiểu & Quay Lại Làm Bài
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Floating Security Feedback Toast -->
+      <div id="examSecurityToast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 font-bold text-xs shadow-2xl border border-slate-700 dark:border-slate-200 security-toast pointer-events-none">
+      </div>
+
+      <!-- Watermark Background chống chụp màn hình bằng thiết bị thứ hai -->
+      ${(this.exam.antiCheat?.enableWatermark !== false) ? `
+        <div class="exam-watermark-overlay" style="background-image: url('data:image/svg+xml;utf8,${encodeURIComponent(`
+          <svg xmlns="http://www.w3.org/2000/svg" width="280" height="130">
+            <text x="15" y="65" fill="%2364748b" font-size="11" font-family="sans-serif" font-weight="bold" transform="rotate(-20 15 65)" opacity="0.6">${this.student.name} • ${this.student.class} • ${this.student.id || ''}</text>
+          </svg>
+        `.trim())}');"></div>
+      ` : ''}
     `;
   },
 
@@ -763,6 +1146,10 @@ const ExamTaking = {
     this._cleanupAntiCheat();
 
     const elapsedSeconds = Math.floor((Date.now() - new Date(this.startedAt).getTime()) / 1000);
+    const maxAllowed = (this.exam.antiCheat && this.exam.antiCheat.maxTabSwitches !== undefined)
+      ? this.exam.antiCheat.maxTabSwitches
+      : 3;
+    const isDisqualified = isAuto && this.tabSwitches >= maxAllowed;
 
     const submissionPayload = {
       examId: this.exam.id,
@@ -773,7 +1160,9 @@ const ExamTaking = {
       durationSeconds: elapsedSeconds,
       answers: this.answers,
       tabSwitches: this.tabSwitches,
-      tabSwitchLogs: this.tabSwitchLogs
+      tabSwitchLogs: this.tabSwitchLogs,
+      isDisqualified: isDisqualified,
+      disqualifiedReason: isDisqualified ? `Vi phạm rời màn hình thi ${this.tabSwitches} lần (vượt giới hạn ${maxAllowed} lần)` : null
     };
 
     try {

@@ -282,9 +282,29 @@ const ExamEditor = {
                 type="number"
                 id="editMaxTabSwitches"
                 value="${exam.antiCheat?.maxTabSwitches || 3}"
-                class="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                class="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none font-bold"
               />
             </div>
+          </div>
+
+          <!-- Anti-Cheat Quick Checkboxes in Editor -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-xs">
+            <label class="flex items-center space-x-2 cursor-pointer p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 transition">
+              <input type="checkbox" id="editAutoSubmitExcess" ${(exam.antiCheat?.autoSubmitOnExcess !== false) ? 'checked' : ''} class="w-3.5 h-3.5 text-blue-600 rounded" />
+              <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Tự thu bài khi quá lần</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 transition">
+              <input type="checkbox" id="editDisableCopy" ${(exam.antiCheat?.disableCopy !== false) ? 'checked' : ''} class="w-3.5 h-3.5 text-blue-600 rounded" />
+              <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Cấm sao chép & chuột phải</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 transition">
+              <input type="checkbox" id="editEnforceFullscreen" ${(exam.antiCheat?.enforceFullscreen !== false) ? 'checked' : ''} class="w-3.5 h-3.5 text-blue-600 rounded" />
+              <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Bật Toàn Màn Hình</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 transition">
+              <input type="checkbox" id="editEnableWatermark" ${(exam.antiCheat?.enableWatermark !== false) ? 'checked' : ''} class="w-3.5 h-3.5 text-blue-600 rounded" />
+              <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Watermark học sinh</span>
+            </label>
           </div>
 
           <!-- Thời gian bắt đầu mở đề & Hạn nộp bài -->
@@ -687,7 +707,12 @@ const ExamEditor = {
     this.currentExam.partPoints = { part1: p1, part2: p2, part3: p3 };
 
     if (!this.currentExam.antiCheat) this.currentExam.antiCheat = {};
-    this.currentExam.antiCheat.maxTabSwitches = parseInt(document.getElementById('editMaxTabSwitches').value, 10) || 3;
+    this.currentExam.antiCheat.maxTabSwitches = parseInt(document.getElementById('editMaxTabSwitches')?.value, 10) || 3;
+    this.currentExam.antiCheat.autoSubmitOnExcess = document.getElementById('editAutoSubmitExcess') ? document.getElementById('editAutoSubmitExcess').checked : true;
+    this.currentExam.antiCheat.disableContextMenu = document.getElementById('editDisableCopy') ? document.getElementById('editDisableCopy').checked : true;
+    this.currentExam.antiCheat.disableCopy = document.getElementById('editDisableCopy') ? document.getElementById('editDisableCopy').checked : true;
+    this.currentExam.antiCheat.enforceFullscreen = document.getElementById('editEnforceFullscreen') ? document.getElementById('editEnforceFullscreen').checked : true;
+    this.currentExam.antiCheat.enableWatermark = document.getElementById('editEnableWatermark') ? document.getElementById('editEnableWatermark').checked : true;
 
     if (this.currentExam.id.startsWith('new_')) {
       this.currentExam.id = `exam_${Date.now()}`;

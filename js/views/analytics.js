@@ -38,6 +38,7 @@ const Analytics = {
     const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
     const minScore = scores.length > 0 ? Math.min(...scores) : 0;
     const lowScoreStudents = submittedStudents.filter(s => subMap[s.id].score < 5.0);
+    const suspiciousStudents = submittedStudents.filter(s => (subMap[s.id].tabSwitches >= 3) || subMap[s.id].isDisqualified);
 
     // Tính phổ điểm
     const dist = {
@@ -112,9 +113,9 @@ const Analytics = {
           </select>
         </div>
 
-        <!-- 4 KPI Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
+        <!-- 5 KPI Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
             <div class="text-xs text-slate-400 font-medium">Điểm trung bình</div>
             <div class="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">
               ${avgScore}đ
@@ -122,30 +123,38 @@ const Analytics = {
             <div class="text-[11px] text-slate-500 mt-1">Toàn bộ bài nộp</div>
           </div>
 
-          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
-            <div class="text-xs text-slate-400 font-medium">Cao nhất / Thấp nhất</div>
+          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+            <div class="text-xs text-slate-400 font-medium">Cao / Thấp nhất</div>
             <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
-              ${maxScore} <span class="text-sm font-normal text-slate-400">/ ${minScore}đ</span>
+              ${maxScore} <span class="text-xs font-normal text-slate-400">/ ${minScore}đ</span>
             </div>
-            <div class="text-[11px] text-slate-500 mt-1">Khoảng điểm đạt được</div>
+            <div class="text-[11px] text-slate-500 mt-1">Khoảng điểm đạt</div>
           </div>
 
-          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
-            <div class="text-xs text-slate-400 font-medium">Tỉ lệ hoàn thành</div>
+          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+            <div class="text-xs text-slate-400 font-medium">Tỉ lệ nộp bài</div>
             <div class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
               ${submittedStudents.length} / ${targetStudents.length}
             </div>
             <div class="text-[11px] text-slate-500 mt-1">
-              ${targetStudents.length > 0 ? Math.round((submittedStudents.length / targetStudents.length) * 100) : 0}% đã nộp bài
+              ${targetStudents.length > 0 ? Math.round((submittedStudents.length / targetStudents.length) * 100) : 0}% hoàn thành
             </div>
           </div>
 
-          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
-            <div class="text-xs text-slate-400 font-medium">Cần hỗ trợ (&lt; 5.0)</div>
+          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+            <div class="text-xs text-slate-400 font-medium">Cần hỗ trợ (&lt; 5đ)</div>
             <div class="text-2xl sm:text-3xl font-black text-amber-500 mt-1">
               ${lowScoreStudents.length} HS
             </div>
-            <div class="text-[11px] text-slate-500 mt-1">Học sinh dưới 5 điểm</div>
+            <div class="text-[11px] text-slate-500 mt-1">Học sinh dưới 5đ</div>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+            <div class="text-xs text-slate-400 font-medium">Nghi vấn gian lận</div>
+            <div class="text-2xl sm:text-3xl font-black ${suspiciousStudents.length > 0 ? 'text-red-500 animate-pulse' : 'text-slate-700 dark:text-slate-300'} mt-1">
+              ${suspiciousStudents.length} HS
+            </div>
+            <div class="text-[11px] text-slate-500 mt-1">Rời tab $\ge$ 3 lần</div>
           </div>
         </div>
 
@@ -321,9 +330,11 @@ const Analytics = {
                       </td>
                       <td class="py-3.5 px-4 text-slate-500">${durMin}m ${durSec}s</td>
                       <td class="py-3.5 px-4 text-center">
-                        ${sub.tabSwitches > 0
-                          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">${sub.tabSwitches} lần</span>`
-                          : '<span class="text-slate-400">0</span>'}
+                        ${sub.tabSwitches >= 3 || sub.isDisqualified
+                          ? `<span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 animate-pulse border border-red-300 dark:border-red-800" title="Đã rời màn hình ${sub.tabSwitches} lần - Nghi vấn gian lận cao">🔴 ${sub.tabSwitches} lần</span>`
+                          : (sub.tabSwitches > 0
+                            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" title="Đã rời màn hình ${sub.tabSwitches} lần">🟡 ${sub.tabSwitches} lần</span>`
+                            : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">🟢 0</span>')}
                       </td>
                       <td class="py-3.5 px-4 text-right">
                         <button

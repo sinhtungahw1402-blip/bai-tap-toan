@@ -132,6 +132,68 @@ const ExamResult = {
 
         </div>
 
+        <!-- Anti-Cheat Audit & Monitoring Section (Biên Bản Giám Sát Chống Gian Lận) -->
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-10 h-10 rounded-2xl ${submission.tabSwitches === 0 ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' : (submission.tabSwitches >= 3 || submission.isDisqualified ? 'bg-red-50 dark:bg-red-950/70 text-red-600 dark:text-red-400' : 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400')} flex items-center justify-center text-lg">
+                ${submission.tabSwitches === 0 ? '🛡️' : (submission.tabSwitches >= 3 || submission.isDisqualified ? '⛔' : '⚠️')}
+              </div>
+              <div>
+                <h3 class="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider">
+                  Biên Bản Giám Sát Phòng Thi (Chống Gian Lận)
+                </h3>
+                <p class="text-xs text-slate-400">
+                  Ghi nhận tự động hành vi rời màn hình, đổi tab và phím tắt trong suốt thời gian làm bài
+                </p>
+              </div>
+            </div>
+
+            <div>
+              ${submission.tabSwitches === 0 ? `
+                <span class="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  🟢 Trung Thực Tuyệt Đối (0 vi phạm)
+                </span>
+              ` : (submission.tabSwitches >= 3 || submission.isDisqualified ? `
+                <span class="px-3 py-1 rounded-xl text-xs font-black bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
+                  🔴 Nghi Vấn Gian Lận Cao (${submission.tabSwitches} lần)
+                </span>
+              ` : `
+                <span class="px-3 py-1 rounded-xl text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                  🟡 Có Cảnh Báo Rời Tab (${submission.tabSwitches} lần)
+                </span>
+              `)}
+            </div>
+          </div>
+
+          ${submission.isDisqualified ? `
+            <div class="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-semibold">
+              ⛔ <strong>Bài thi bị hệ thống đình chỉ & cưỡng chế thu bài:</strong> ${submission.disqualifiedReason || 'Rời màn hình làm bài quá số lần quy định.'}
+            </div>
+          ` : ''}
+
+          ${submission.tabSwitchLogs && submission.tabSwitchLogs.length > 0 ? `
+            <div class="space-y-2">
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Chi tiết các lần phát hiện rời màn hình / chuyển ứng dụng:
+              </span>
+              <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                ${submission.tabSwitchLogs.map((log, idx) => `
+                  <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs font-mono flex items-center justify-between">
+                    <span class="text-slate-700 dark:text-slate-300">📌 ${log}</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-300 shrink-0">Vi phạm #${idx + 1}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : `
+            <div class="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-xs flex items-center space-x-2">
+              <span>✓</span>
+              <span>Trong suốt bài thi, học sinh tập trung làm bài liên tục và không có hành vi chuyển tab hay thoát màn hình thi.</span>
+            </div>
+          `}
+        </div>
+
         <!-- Detailed Review Section -->
         <div class="space-y-4">
           <div class="flex items-center justify-between">
@@ -214,7 +276,7 @@ const ExamResult = {
 
         <!-- Answers by Part -->
         <div class="pt-2">
-          ${this._renderItemAnswersReview(q, res)}
+          ${this._renderItemAnswersReview(q, res, submission)}
         </div>
 
         <!-- Explanation with KaTeX -->
@@ -233,7 +295,7 @@ const ExamResult = {
     `;
   },
 
-  _renderItemAnswersReview(q, res) {
+  _renderItemAnswersReview(q, res, submission = null) {
     if (q.part === 1) {
       const studentAns = res ? res.studentAnswer : '';
       const correctAns = q.correctAnswer;
@@ -271,7 +333,7 @@ const ExamResult = {
     }
 
     if (q.part === 2) {
-      const sAnsObj = (submission.answers && submission.answers[q.id]) || {};
+      const sAnsObj = (submission && submission.answers && submission.answers[q.id]) || {};
       const details = res ? (res.subDetails || {}) : {};
 
       return `

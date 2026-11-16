@@ -1289,7 +1289,9 @@ const SampleData = {
             "disableCopy": true,
             "autoSubmitOnExcess": true,
             "maxTabSwitches": 3,
-            "disableContextMenu": true
+            "disableContextMenu": true,
+            "enforceFullscreen": true,
+            "enableWatermark": true
         },
         "partPoints": {
             "part2": 2,

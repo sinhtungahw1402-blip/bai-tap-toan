@@ -246,36 +246,81 @@ const ExamAssign = {
 
         <!-- Viewing & Security Policies -->
         <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
-          <h3 class="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider">
-            3. Cài Đặt Điểm Số, Đáp Án & Giám Sát Gian Lận
-          </h3>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Hiển thị điểm số cho học sinh</label>
+              <h3 class="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider">
+                3. Cài Đặt Điểm Số, Đáp Án & Giám Sát Gian Lận
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Thiết lập quy chế giám sát nghiêm ngặt cho cả điện thoại và máy tính
+              </p>
+            </div>
+            <span class="px-2.5 py-1 rounded-xl text-xs font-black bg-rose-50 text-rose-600 dark:bg-rose-950/70 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+              🛡️ Anti-Cheat AI
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Hiển thị điểm số</label>
               <select id="assignViewScore" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none">
                 <option value="immediate" ${currentExam.viewScoreMode === 'immediate' ? 'selected' : ''}>Hiển thị điểm ngay sau khi nộp</option>
-                <option value="after_due" ${currentExam.viewScoreMode === 'after_due' ? 'selected' : ''}>Chỉ hiển thị điểm sau khi hết hạn nộp bài</option>
+                <option value="after_due" ${currentExam.viewScoreMode === 'after_due' ? 'selected' : ''}>Chỉ hiển thị sau hạn nộp bài</option>
               </select>
             </div>
 
             <div>
-              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Hiển thị đáp án & hướng dẫn giải</label>
+              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Hiển thị đáp án & lời giải</label>
               <select id="assignViewAnswer" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none">
-                <option value="immediate" ${currentExam.viewAnswerMode === 'immediate' ? 'selected' : ''}>Xem đáp án & lời giải ngay sau khi nộp</option>
-                <option value="after_due" ${currentExam.viewAnswerMode === 'after_due' ? 'selected' : ''}>Khóa lời giải, chỉ mở sau hạn nộp bài</option>
+                <option value="immediate" ${currentExam.viewAnswerMode === 'immediate' ? 'selected' : ''}>Xem ngay sau khi nộp</option>
+                <option value="after_due" ${currentExam.viewAnswerMode === 'after_due' ? 'selected' : ''}>Khóa lời giải, chỉ mở sau hạn nộp</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Giới hạn số lần rời màn hình thi</label>
+              <select id="assignMaxTabSwitches" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none font-bold">
+                <option value="1" ${(currentExam.antiCheat?.maxTabSwitches === 1) ? 'selected' : ''}>1 lần (Nghiêm ngặt tuyệt đối - Vi phạm thu bài ngay)</option>
+                <option value="2" ${(currentExam.antiCheat?.maxTabSwitches === 2) ? 'selected' : ''}>2 lần (Nghiêm khắc)</option>
+                <option value="3" ${(currentExam.antiCheat?.maxTabSwitches === 3 || !currentExam.antiCheat?.maxTabSwitches) ? 'selected' : ''}>3 lần (Khuyên dùng chuẩn Azota)</option>
+                <option value="5" ${(currentExam.antiCheat?.maxTabSwitches === 5) ? 'selected' : ''}>5 lần (Linh hoạt)</option>
+                <option value="99" ${(currentExam.antiCheat?.maxTabSwitches === 99) ? 'selected' : ''}>Không giới hạn (Chỉ ghi nhật ký vi phạm)</option>
               </select>
             </div>
           </div>
 
-          <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 text-xs">
-            <label class="flex items-center space-x-2.5 cursor-pointer">
-              <input type="checkbox" id="assignAutoSubmitExcess" checked class="w-4 h-4 text-blue-600 rounded" />
-              <span class="font-bold text-slate-700 dark:text-slate-300">Tự động thu bài khi học sinh rời tab quá số lần cho phép</span>
+          <!-- Advanced Anti-Cheat Checkboxes -->
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <label class="flex items-center space-x-2.5 cursor-pointer p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+              <input type="checkbox" id="assignAutoSubmitExcess" ${(currentExam.antiCheat?.autoSubmitOnExcess !== false) ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded" />
+              <div>
+                <span class="font-bold text-slate-700 dark:text-slate-200 block">Tự động đình chỉ & thu bài</span>
+                <span class="text-[11px] text-slate-400">Cưỡng chế nộp bài ngay khi vượt số lần rời tab</span>
+              </div>
             </label>
-            <label class="flex items-center space-x-2.5 cursor-pointer">
-              <input type="checkbox" id="assignDisableCopy" checked class="w-4 h-4 text-blue-600 rounded" />
-              <span class="font-bold text-slate-700 dark:text-slate-300">Khóa chuột phải, cấm sao chép câu hỏi trong khi thi</span>
+
+            <label class="flex items-center space-x-2.5 cursor-pointer p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+              <input type="checkbox" id="assignDisableCopy" ${(currentExam.antiCheat?.disableCopy !== false) ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded" />
+              <div>
+                <span class="font-bold text-slate-700 dark:text-slate-200 block">Khóa chuột phải & cấm sao chép</span>
+                <span class="text-[11px] text-slate-400">Chặn bôi đen câu hỏi, kéo thả & phím tắt DevTools (F12)</span>
+              </div>
+            </label>
+
+            <label class="flex items-center space-x-2.5 cursor-pointer p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+              <input type="checkbox" id="assignEnforceFullscreen" ${(currentExam.antiCheat?.enforceFullscreen !== false) ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded" />
+              <div>
+                <span class="font-bold text-slate-700 dark:text-slate-200 block">Bật chế độ Toàn Màn Hình</span>
+                <span class="text-[11px] text-slate-400">Yêu cầu toàn màn hình, cảnh báo khi bấm thoát F11/Esc</span>
+              </div>
+            </label>
+
+            <label class="flex items-center space-x-2.5 cursor-pointer p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+              <input type="checkbox" id="assignEnableWatermark" ${(currentExam.antiCheat?.enableWatermark !== false) ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded" />
+              <div>
+                <span class="font-bold text-slate-700 dark:text-slate-200 block">Đóng dấu Watermark học sinh</span>
+                <span class="text-[11px] text-slate-400">In mờ tên + lớp học sinh nền đề, chống chụp ảnh gửi ra ngoài</span>
+              </div>
             </label>
           </div>
         </div>
@@ -380,9 +425,12 @@ const ExamAssign = {
     exam.viewAnswerMode = document.getElementById('assignViewAnswer').value;
 
     if (!exam.antiCheat) exam.antiCheat = {};
-    exam.antiCheat.autoSubmitOnExcess = document.getElementById('assignAutoSubmitExcess').checked;
-    exam.antiCheat.disableContextMenu = document.getElementById('assignDisableCopy').checked;
-    exam.antiCheat.disableCopy = document.getElementById('assignDisableCopy').checked;
+    exam.antiCheat.maxTabSwitches = parseInt(document.getElementById('assignMaxTabSwitches')?.value, 10) || 3;
+    exam.antiCheat.autoSubmitOnExcess = document.getElementById('assignAutoSubmitExcess') ? document.getElementById('assignAutoSubmitExcess').checked : true;
+    exam.antiCheat.disableContextMenu = document.getElementById('assignDisableCopy') ? document.getElementById('assignDisableCopy').checked : true;
+    exam.antiCheat.disableCopy = document.getElementById('assignDisableCopy') ? document.getElementById('assignDisableCopy').checked : true;
+    exam.antiCheat.enforceFullscreen = document.getElementById('assignEnforceFullscreen') ? document.getElementById('assignEnforceFullscreen').checked : true;
+    exam.antiCheat.enableWatermark = document.getElementById('assignEnableWatermark') ? document.getElementById('assignEnableWatermark').checked : true;
 
     await DB.saveExam(exam);
 
