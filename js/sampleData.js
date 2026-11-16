@@ -1300,10 +1300,7 @@ const SampleData = {
         "scale": 10,
         "title": "Đề Kiểm Tra Toán",
         "assignedClasses": [
-            "LỚP 9",
-            "LỚP 10",
-            "LỚP 11",
-            "LỚP 12"
+            "LỚP 10"
         ]
     }
   ],

@@ -181,15 +181,15 @@ const DB = {
         });
       }
 
-      // Đảm bảo đề thi mở cho tất cả các lớp của trường và có cấu hình partPoints
+      // Đảm bảo đề thi có cấu hình thang điểm partPoints chuẩn
       if (Array.isArray(localData.exams)) {
         localData.exams.forEach(ex => {
           if (!ex.partPoints) {
             ex.partPoints = { part1: 0.25, part2: 1.0, part3: 0.5 };
             modified = true;
           }
-          if (!ex.assignedClasses || ex.assignedClasses.length === 0 || !ex.assignedClasses.includes('LỚP 10')) {
-            ex.assignedClasses = ['LỚP 9', 'LỚP 10', 'LỚP 11', 'LỚP 12', '12A1', '12A2'];
+          if (!Array.isArray(ex.assignedClasses)) {
+            ex.assignedClasses = [];
             modified = true;
           }
         });
@@ -491,22 +491,15 @@ const DB = {
     // Sắp xếp đề thi mới nhất lên trên (xử lý tức thì trong RAM)
     const sorted = [...allExams].sort((a, b) => new Date(b.createdAt || b.openTime || 0) - new Date(a.createdAt || a.openTime || 0));
 
-    // Nếu là học sinh: lọc bài phù hợp và loại bỏ đáp án đúng
+    // Nếu là học sinh: chỉ hiển thị đề được giao cho đúng lớp của học sinh này
     if (role === 'student') {
       let filtered = sorted;
       if (studentClass) {
         filtered = sorted.filter(ex => {
-          // 1. Không giới hạn lớp hoặc mảng rỗng -> cho phép toàn trường
-          if (!ex.assignedClasses || ex.assignedClasses.length === 0) return true;
-          // 2. Trực tiếp có tên lớp của học sinh (ví dụ "LỚP 10", "12A1")
-          if (ex.assignedClasses.includes(studentClass)) return true;
-          // 3. Khớp khối (ví dụ đề gán "Khối 10" và học sinh thuộc lớp "LỚP 10" hoặc "10A1")
-          const cleanGroup = (ex.classGroup || '').replace(/khối\s*/i, '').trim();
-          const cleanClass = studentClass.replace(/lớp\s*/i, '').trim();
-          if (cleanGroup && cleanClass && (cleanClass.startsWith(cleanGroup) || cleanGroup.startsWith(cleanClass))) {
-            return true;
-          }
-          return false;
+          // 1. Nếu đề chưa giao lớp nào hoặc danh sách rỗng -> Không hiển thị cho học sinh
+          if (!ex.assignedClasses || ex.assignedClasses.length === 0) return false;
+          // 2. Nghiêm ngặt: Học sinh lớp này CHỈ thấy đề khi lớp mình có tên trong danh sách được giao
+          return ex.assignedClasses.includes(studentClass);
         });
       }
       return filtered.map(ex => GradingEngine.stripAnswersForStudent(ex));

@@ -26,6 +26,15 @@ const ExamTaking = {
       return;
     }
 
+    // Phân quyền lớp học sinh nghiêm ngặt: Học sinh lớp này không thể làm bài của lớp khác
+    if (this.student && this.student.class && this.exam.assignedClasses && this.exam.assignedClasses.length > 0) {
+      if (!this.exam.assignedClasses.includes(this.student.class)) {
+        alert(`⛔ TRUY CẬP BỊ TỪ CHỐI!\n\nBài kiểm tra này chỉ dành riêng cho: ${this.exam.assignedClasses.join(', ')}.\nLớp hiện tại của em là "${this.student.class}". Em không có quyền làm bài của lớp khác.`);
+        window.App.navigateTo('student-dashboard');
+        return;
+      }
+    }
+
     // Kiểm tra nghiêm ngặt thời điểm bắt đầu mở đề thi
     if (this.exam.openTime) {
       const openDate = new Date(this.exam.openTime);
@@ -35,6 +44,20 @@ const ExamTaking = {
           hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
         });
         alert(`⏳ CHƯA ĐẾN GIỜ LÀM BÀI!\n\nĐề thi "${this.exam.title}" chỉ bắt đầu mở vào lúc:\n👉 ${timeStr}\n\nHiện tại: ${now.toLocaleString('vi-VN')}\nEm vui lòng quay lại khi đến giờ làm bài nhé!`);
+        window.App.navigateTo('student-dashboard');
+        return;
+      }
+    }
+
+    // Kiểm tra thời hạn kết thúc nộp bài (dueTime)
+    if (this.exam.dueTime) {
+      const dueDate = new Date(this.exam.dueTime);
+      const now = new Date();
+      if (now > dueDate) {
+        const timeStr = dueDate.toLocaleString('vi-VN', {
+          hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+        });
+        alert(`⌛ ĐÃ HẾT HẠN NỘP BÀI!\n\nBài kiểm tra "${this.exam.title}" đã kết thúc thời gian nộp bài vào lúc:\n👉 ${timeStr}\n\nEm không thể vào làm bài được nữa.`);
         window.App.navigateTo('student-dashboard');
         return;
       }
@@ -62,10 +85,21 @@ const ExamTaking = {
     // 2. Trộn câu hỏi và trộn đáp án (nếu đề bật) dựa trên hạt giống học sinh
     this._prepareQuestions();
 
-    // 3. Tính toán thời gian còn lại
+    // 3. Tính toán thời gian còn lại (kết hợp thời lượng làm bài và thời hạn chót của bài thi)
     const totalDurationSeconds = (this.exam.durationMinutes || 45) * 60;
     const elapsedSeconds = Math.floor((Date.now() - new Date(this.startedAt).getTime()) / 1000);
-    this.remainingSeconds = Math.max(0, totalDurationSeconds - elapsedSeconds);
+    let remaining = Math.max(0, totalDurationSeconds - elapsedSeconds);
+
+    if (this.exam.dueTime) {
+      const dueSecondsLeft = Math.floor((new Date(this.exam.dueTime).getTime() - Date.now()) / 1000);
+      if (dueSecondsLeft <= 0) {
+        alert('⌛ ĐÃ HẾT HẠN NỘP BÀI!\n\nBài kiểm tra này đã kết thúc hạn nộp.');
+        window.App.navigateTo('student-dashboard');
+        return;
+      }
+      remaining = Math.min(remaining, dueSecondsLeft);
+    }
+    this.remainingSeconds = remaining;
 
     // 4. Kích hoạt chống gian lận
     this._setupAntiCheat();
@@ -130,6 +164,9 @@ const ExamTaking = {
 
       if (this.remainingSeconds <= 0) {
         clearInterval(this.timerInterval);
+        this.remainingSeconds = 0;
+        this._updateTimerDisplay();
+        alert('⏰ ĐÃ HẾT GIỜ LÀM BÀI!\n\nThời gian làm bài quy định đã kết thúc. Hệ thống tự động thu bài và gửi kết quả chấm điểm.');
         this.submitExam(true); // Tự động nộp bài khi hết giờ
         return;
       }

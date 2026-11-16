@@ -8,11 +8,9 @@ const StudentDashboard = {
       student = { id: 'hs_demo', name: 'Học sinh', class: '12A1' };
     }
 
+    // Chỉ lấy đúng đề thi được giao cho lớp của học sinh này (không lấy đề lớp khác)
     let exams = await DB.getExams(student.class, 'student');
-    if (!exams || exams.length === 0) {
-      // Nếu không có đề theo lớp thì lấy tất cả đề
-      exams = await DB.getExams(null, 'student');
-    }
+    if (!exams) exams = [];
 
     const submissions = await DB.getSubmissions(null, student.id);
     const subMap = {};
@@ -51,18 +49,12 @@ const StudentDashboard = {
         if (hoursLeft <= 24 && hoursLeft > 0) {
           dueSoonExams.push({ exam, submission: hasSub, hoursLeft: Math.round(hoursLeft) });
         }
-        // Luôn đưa vào tab Đang mở để học sinh nhìn thấy và bấm vào thi
-        activeExams.push({ exam, submission: hasSub });
+        activeExams.push({ exam, submission: hasSub, isNotYetOpen: false });
       } else {
-        // Chưa đến giờ mở: vẫn hiển thị trong tab Đang mở nhưng khóa nút và ghi rõ thời điểm bắt đầu
+        // Chưa đến giờ mở: hiển thị trong tab Đang mở nhưng khóa nút và ghi rõ thời điểm bắt đầu
         activeExams.push({ exam, submission: hasSub, isNotYetOpen: true });
       }
     });
-
-    // Nếu vẫn chưa có bài nào mở, đưa toàn bộ đề có sẵn vào
-    if (activeExams.length === 0 && exams.length > 0) {
-      exams.forEach(ex => activeExams.push({ exam: ex, submission: subMap[ex.id] }));
-    }
 
     // Lưu dữ liệu hiện tại vào memory để switchTab phản hồi tức thì trong 0ms
     this._currentData = { activeExams, dueSoonExams, completedExams, expiredExams, submissions, exams, student };
@@ -303,19 +295,20 @@ const StudentDashboard = {
           ` : (isNotYetOpen ? `
             <button
               type="button"
-              disabled
-              class="w-full py-3 px-4 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-400 dark:text-slate-500 font-bold text-xs sm:text-sm cursor-not-allowed flex items-center justify-center space-x-1.5 border border-slate-200 dark:border-slate-600 select-none shadow-none"
+              onclick="window.App.notifyNotYetOpen('${(exam.title || '').replace(/'/g, "\\'")}', '${openDateStr}')"
+              class="w-full py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 border border-amber-300 dark:border-amber-700 shadow-sm transition active:scale-95 cursor-pointer"
               title="Chưa đến giờ làm bài! Đề thi sẽ mở lúc: ${openDateStr}"
             >
-              <span>🔒 Chưa Đến Giờ Làm Bài</span>
-              <span class="text-[11px] font-normal">(${openDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${openDate.toLocaleDateString('vi-VN')})</span>
+              <span>🔒</span>
+              <span>Chưa Đến Giờ Mở Đề (${openDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${openDate.toLocaleDateString('vi-VN')})</span>
             </button>
           ` : (status === 'expired' ? `
             <button
-              onclick="window.App.startExam('${exam.id}')"
-              class="w-full py-2.5 px-4 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition"
+              type="button"
+              disabled
+              class="w-full py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 font-bold text-xs cursor-not-allowed text-center border border-slate-200 dark:border-slate-700"
             >
-              Luyện tập quá hạn
+              ⌛ Đã Hết Hạn Làm Bài (${dueDateStr})
             </button>
           ` : `
             <button

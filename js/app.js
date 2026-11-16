@@ -581,6 +581,10 @@ const App = {
     `;
   },
 
+  notifyNotYetOpen(title, openTimeStr) {
+    alert(`⏳ CHƯA ĐẾN GIỜ LÀM BÀI!\n\nĐề thi "${title}" chỉ bắt đầu mở vào lúc:\n👉 ${openTimeStr}\n\nHiện tại chưa đến thời điểm mở đề. Em vui lòng quay lại khi đến giờ làm bài nhé!`);
+  },
+
   async startExam(examId) {
     if (!this.currentUser) {
       // Tự động gán tài khoản học sinh thử nghiệm nếu chưa đăng nhập
@@ -588,19 +592,42 @@ const App = {
       this.currentUser = { role: 'student', ...(students[0] || { id: 'hs_guest', name: 'Học sinh thử nghiệm', class: '12A1' }) };
     }
 
-    // Kiểm tra thời gian mở đề thi: Chỉ cho phép làm khi đúng thời điểm bắt đầu
     const exam = await DB.getExamById(examId, 'student');
     if (!exam) {
       alert('Không tìm thấy đề thi!');
       return;
     }
 
+    // 1. Phân quyền lớp học sinh nghiêm ngặt: Học sinh lớp này không thể làm bài của lớp khác
+    if (this.currentUser.role === 'student' && this.currentUser.class) {
+      if (exam.assignedClasses && exam.assignedClasses.length > 0) {
+        if (!exam.assignedClasses.includes(this.currentUser.class)) {
+          alert(`⛔ TRUY CẬP BỊ TỪ CHỐI!\n\nBài kiểm tra này chỉ dành riêng cho: ${exam.assignedClasses.join(', ')}.\nLớp hiện tại của em là "${this.currentUser.class}". Em không có quyền làm bài của lớp khác.`);
+          this.navigateTo('student-dashboard');
+          return;
+        }
+      }
+    }
+
+    // 2. Chặn vào thi trước giờ mở đề (openTime)
     if (exam.openTime) {
       const openDate = new Date(exam.openTime);
       const now = new Date();
       if (now < openDate) {
         const timeStr = openDate.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
-        alert(`⏳ CHƯA ĐẾN GIỜ LÀM BÀI!\n\nĐề thi "${exam.title}" chỉ bắt đầu mở vào lúc:\n👉 ${timeStr}\n\nHiện tại: ${now.toLocaleString('vi-VN')}\nEm vui lòng quay lại khi đến giờ làm bài nhé!`);
+        this.notifyNotYetOpen(exam.title, timeStr);
+        this.navigateTo('student-dashboard');
+        return;
+      }
+    }
+
+    // 3. Chặn vào thi nếu đã hết hạn nộp bài (dueTime)
+    if (exam.dueTime) {
+      const dueDate = new Date(exam.dueTime);
+      const now = new Date();
+      if (now > dueDate) {
+        const timeStr = dueDate.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+        alert(`⌛ ĐÃ HẾT HẠN NỘP BÀI!\n\nBài kiểm tra "${exam.title}" đã kết thúc thời hạn làm bài vào lúc:\n👉 ${timeStr}\n\nEm không thể vào làm bài được nữa.`);
         this.navigateTo('student-dashboard');
         return;
       }

@@ -82,6 +82,12 @@ const ExamEditor = {
                       <span>Phần III (Điền số):</span>
                       <span>${p3} câu</span>
                     </div>
+                    <div class="flex justify-between text-[11px] pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <span class="text-slate-500">Lớp nhận bài:</span>
+                      <strong class="${(exam.assignedClasses && exam.assignedClasses.length > 0) ? 'text-blue-600 dark:text-blue-400 font-extrabold' : 'text-amber-600 dark:text-amber-400 font-medium'}">
+                        ${(exam.assignedClasses && exam.assignedClasses.length > 0) ? exam.assignedClasses.join(', ') : '⚪ Chưa giao lớp'}
+                      </strong>
+                    </div>
                   </div>
                 </div>
 
@@ -93,7 +99,7 @@ const ExamEditor = {
                     ✏️ Soạn bài
                   </button>
                   <button
-                    onclick="window.App.navigateTo('exam-assign', '${exam.id}')"
+                    onclick="window.AdminDashboard ? window.AdminDashboard.switchTab('assign', '${exam.id}') : window.App.navigateTo('exam-assign', '${exam.id}')"
                     class="py-2 px-2 text-center rounded-xl font-bold text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition"
                   >
                     📤 Giao bài
