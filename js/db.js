@@ -103,49 +103,7 @@ const DB = {
 
   // Khởi tạo Database
   async init() {
-    // 0. Khởi tạo bộ nhớ đệm In-Memory siêu tốc từ LocalStorage
-    this._initCache();
-
-    // 1. Kiểm tra cấu hình Firebase: ưu tiên cấu hình tùy chỉnh máy Admin, sau đó cấu hình mặc định toàn trường trong APP_CONFIG
-    try {
-      let config = null;
-      const customConfigStr = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG);
-      if (customConfigStr) {
-        try { config = JSON.parse(customConfigStr); } catch (e) {}
-      }
-      if (!config && APP_CONFIG.FIREBASE_CONFIG && APP_CONFIG.FIREBASE_CONFIG.apiKey) {
-        config = APP_CONFIG.FIREBASE_CONFIG;
-      }
-
-      if (config && config.apiKey && config.projectId && typeof firebase !== 'undefined') {
-        if (!firebase.apps || !firebase.apps.length) {
-          firebase.initializeApp(config);
-        }
-        this.firestore = firebase.firestore();
-        this.isFirebaseActive = true;
-        console.log('[DB] Kết nối Firebase Firestore Cloud thành công cho toàn trường!');
-
-        // Gắn lắng nghe Realtime chạy nền (hoàn toàn không chặn luồng khởi động app)
-        this._attachRealtimeListeners();
-
-        // Tự động kiểm tra Cloud ngầm: Nếu Cloud chưa có dữ liệu thì đẩy dữ liệu cục bộ lên Cloud
-        this.firestore.collection('students').limit(1).get().then(snapCheck => {
-          if (snapCheck.empty) {
-            const local = this._getLocal();
-            if (local && local.students && local.students.length > 0) {
-              console.log(`[DB] Đang tự động tải ${local.students.length} học sinh và đề thi lên Firebase Cloud...`);
-              this.syncLocalToFirestore(local);
-            }
-          }
-        }).catch(e => console.warn('[DB] Lưu ý khi kiểm tra dữ liệu Cloud:', e));
-
-        return;
-      }
-    } catch (err) {
-      console.warn('[DB] Lỗi khởi động Firebase, chuyển sang chế độ cục bộ:', err);
-    }
-
-    // 2. Chế độ Lưu trữ Cục bộ có Dữ liệu mẫu (Khởi chạy ngay không cần cài đặt)
+    // 0. Đảm bảo dữ liệu cục bộ luôn có sẵn SampleData (87 học sinh & đề thi) ngay lập tức
     let localData = null;
     try {
       const raw = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.LOCAL_DB);
@@ -162,6 +120,7 @@ const DB = {
         adminConfig: localData ? localData.adminConfig : null
       };
       this._saveLocal(initialDb, false);
+      localData = initialDb;
     } else {
       // Tự động đồng bộ và bổ sung học sinh mới từ SampleData (87 học sinh) vào CSDL máy hiện tại
       let modified = false;
@@ -211,6 +170,48 @@ const DB = {
         console.log(`[DB] Đã cập nhật CSDL cục bộ: ${localData.students.length} học sinh`);
         this._saveLocal(localData, false);
       }
+    }
+
+    // Khởi tạo bộ nhớ đệm In-Memory siêu tốc từ LocalStorage đã hoàn thiện
+    this._initCache();
+
+    // 1. Kiểm tra cấu hình Firebase: ưu tiên cấu hình tùy chỉnh máy Admin, sau đó cấu hình mặc định toàn trường trong APP_CONFIG
+    try {
+      let config = null;
+      const customConfigStr = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.FIREBASE_CONFIG);
+      if (customConfigStr) {
+        try { config = JSON.parse(customConfigStr); } catch (e) {}
+      }
+      if (!config && APP_CONFIG.FIREBASE_CONFIG && APP_CONFIG.FIREBASE_CONFIG.apiKey) {
+        config = APP_CONFIG.FIREBASE_CONFIG;
+      }
+
+      if (config && config.apiKey && config.projectId && typeof firebase !== 'undefined') {
+        if (!firebase.apps || !firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        this.firestore = firebase.firestore();
+        this.isFirebaseActive = true;
+        console.log('[DB] Kết nối Firebase Firestore Cloud thành công cho toàn trường!');
+
+        // Gắn lắng nghe Realtime chạy nền (hoàn toàn không chặn luồng khởi động app)
+        this._attachRealtimeListeners();
+
+        // Tự động kiểm tra Cloud ngầm: Nếu Cloud chưa có dữ liệu thì đẩy dữ liệu cục bộ lên Cloud
+        this.firestore.collection('students').limit(1).get().then(snapCheck => {
+          if (snapCheck.empty) {
+            const local = this._getLocal();
+            if (local && local.students && local.students.length > 0) {
+              console.log(`[DB] Đang tự động tải ${local.students.length} học sinh và đề thi lên Firebase Cloud...`);
+              this.syncLocalToFirestore(local);
+            }
+          }
+        }).catch(e => console.warn('[DB] Lưu ý khi kiểm tra dữ liệu Cloud:', e));
+
+        return;
+      }
+    } catch (err) {
+      console.warn('[DB] Lỗi khởi động Firebase, chuyển sang chế độ cục bộ:', err);
     }
   },
 
@@ -495,11 +496,13 @@ const DB = {
     if (role === 'student') {
       let filtered = sorted;
       if (studentClass) {
+        const norm = (s) => String(s || '').trim().toUpperCase();
+        const stClassNorm = norm(studentClass);
         filtered = sorted.filter(ex => {
           // 1. Nếu đề chưa giao lớp nào hoặc danh sách rỗng -> Không hiển thị cho học sinh
           if (!ex.assignedClasses || ex.assignedClasses.length === 0) return false;
-          // 2. Nghiêm ngặt: Học sinh lớp này CHỈ thấy đề khi lớp mình có tên trong danh sách được giao
-          return ex.assignedClasses.includes(studentClass);
+          // 2. Nghiêm ngặt: Học sinh lớp này CHỈ thấy đề khi lớp mình có tên trong danh sách được giao (không phân biệt hoa thường hoặc khoảng trắng)
+          return ex.assignedClasses.some(c => norm(c) === stClassNorm);
         });
       }
       return filtered.map(ex => GradingEngine.stripAnswersForStudent(ex));

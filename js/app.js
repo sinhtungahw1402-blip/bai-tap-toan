@@ -82,12 +82,16 @@ const App = {
       if (paired) return;
     }
 
-    // 4. Lắng nghe cập nhật đề thi thời gian thực từ Firebase Cloud
+    // 4. Lắng nghe cập nhật đề thi thời gian thực từ Firebase Cloud (Khử rung debounce 150ms)
     try {
+      let examDebounceTimer = null;
       DB.listenExams((exams) => {
         if (this.currentView === 'student-dashboard' || (this.currentView === 'admin-dashboard' && AdminDashboard.currentTab === 'exams')) {
-          console.log('[App] Tự động cập nhật giao diện đề thi mới...');
-          this.renderApp();
+          if (examDebounceTimer) clearTimeout(examDebounceTimer);
+          examDebounceTimer = setTimeout(() => {
+            console.log('[App] Tự động cập nhật giao diện đề thi mới...');
+            this.renderApp();
+          }, 150);
         }
       });
     } catch (e) {}
@@ -601,7 +605,10 @@ const App = {
     // 1. Phân quyền lớp học sinh nghiêm ngặt: Học sinh lớp này không thể làm bài của lớp khác
     if (this.currentUser.role === 'student' && this.currentUser.class) {
       if (exam.assignedClasses && exam.assignedClasses.length > 0) {
-        if (!exam.assignedClasses.includes(this.currentUser.class)) {
+        const norm = (s) => String(s || '').trim().toUpperCase();
+        const stClassNorm = norm(this.currentUser.class);
+        const isAssigned = exam.assignedClasses.some(c => norm(c) === stClassNorm);
+        if (!isAssigned) {
           alert(`⛔ TRUY CẬP BỊ TỪ CHỐI!\n\nBài kiểm tra này chỉ dành riêng cho: ${exam.assignedClasses.join(', ')}.\nLớp hiện tại của em là "${this.currentUser.class}". Em không có quyền làm bài của lớp khác.`);
           this.navigateTo('student-dashboard');
           return;

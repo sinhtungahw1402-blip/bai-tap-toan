@@ -113,8 +113,9 @@ const ExamAssign = {
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             ${classes.map(c => {
-              const isChecked = assignedClasses.includes(c);
-              const count = students.filter(s => s.class === c).length;
+              const cNorm = String(c || '').trim().toUpperCase();
+              const isChecked = assignedClasses.some(ac => String(ac || '').trim().toUpperCase() === cNorm);
+              const count = students.filter(s => String(s.class || '').trim().toUpperCase() === cNorm).length;
               return `
                 <label class="cursor-pointer p-3.5 rounded-2xl border transition flex items-center space-x-3 select-none ${
                   isChecked

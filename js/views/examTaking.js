@@ -34,7 +34,10 @@ const ExamTaking = {
 
     // Phân quyền lớp học sinh nghiêm ngặt: Học sinh lớp này không thể làm bài của lớp khác
     if (this.student && this.student.class && this.exam.assignedClasses && this.exam.assignedClasses.length > 0) {
-      if (!this.exam.assignedClasses.includes(this.student.class)) {
+      const norm = (s) => String(s || '').trim().toUpperCase();
+      const stClassNorm = norm(this.student.class);
+      const isAssigned = this.exam.assignedClasses.some(c => norm(c) === stClassNorm);
+      if (!isAssigned) {
         alert(`⛔ TRUY CẬP BỊ TỪ CHỐI!\n\nBài kiểm tra này chỉ dành riêng cho: ${this.exam.assignedClasses.join(', ')}.\nLớp hiện tại của em là "${this.student.class}". Em không có quyền làm bài của lớp khác.`);
         window.App.navigateTo('student-dashboard');
         return;
@@ -632,6 +635,7 @@ const ExamTaking = {
               </button>
 
               <button
+                id="examAnsweredCountHeader"
                 onclick="window.ExamTaking.openPaletteModal()"
                 class="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs"
                 title="Bảng câu hỏi"
@@ -660,99 +664,8 @@ const ExamTaking = {
         <div class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           <!-- Left: Current Question Card (lg:col-span-8) -->
-          <div class="lg:col-span-8 flex flex-col justify-between space-y-6">
-            
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-8 shadow-sm">
-              
-              <!-- Question Header Meta -->
-              <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-6">
-                <div class="flex items-center space-x-2">
-                  <span class="px-3 py-1 rounded-xl text-xs font-black bg-blue-600 text-white">
-                    Câu ${this.currentIndex + 1} / ${totalQ}
-                  </span>
-                  <span class="px-2.5 py-1 rounded-xl text-xs font-bold ${
-                    currentQ.part === 1 ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
-                    currentQ.part === 2 ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
-                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                  }">
-                    ${currentQ.part === 1 ? 'Phần I: 4 Lựa chọn' : currentQ.part === 2 ? 'Phần II: Đúng / Sai' : 'Phần III: Điền số'}
-                  </span>
-                  <span class="text-xs text-slate-400 font-medium">
-                    (${currentQ.points || (currentQ.part === 1 ? 0.25 : (currentQ.part === 2 ? 1.0 : 0.5))} điểm)
-                  </span>
-                </div>
-
-                <!-- Flag for review button -->
-                <button
-                  onclick="window.ExamTaking.toggleFlag()"
-                  class="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition ${
-                    isFlagged
-                      ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/20'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }"
-                >
-                  <span>🚩</span>
-                  <span class="hidden sm:inline">${isFlagged ? 'Đã xem lại' : 'Xem lại'}</span>
-                </button>
-              </div>
-
-              <!-- Question Content (Rendered with KaTeX) -->
-              <div class="text-base sm:text-lg text-slate-800 dark:text-slate-100 font-medium leading-relaxed py-1 mb-6 overflow-visible">
-                ${MathRenderer.renderToString(currentQ.content)}
-              </div>
-
-              <!-- Optional Image -->
-              ${currentQ.image ? `
-                <div class="mb-6 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-w-md mx-auto">
-                  <img src="${currentQ.image}" alt="Hình minh họa" class="w-full object-contain" />
-                </div>
-              ` : ''}
-
-              <!-- Interactive Answers according to Part -->
-              <div class="mt-6">
-                ${this._renderQuestionAnswers(currentQ)}
-              </div>
-
-            </div>
-
-            <!-- Bottom Navigation Bar -->
-            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 flex items-center justify-between shadow-sm">
-              <button
-                onclick="window.ExamTaking.prevQuestion()"
-                ${isFirst ? 'disabled' : ''}
-                class="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition ${
-                  isFirst
-                    ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400'
-                    : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-                }"
-              >
-                <span>←</span>
-                <span>Câu trước</span>
-              </button>
-
-              <span id="saveStatusIndicator" class="text-xs text-slate-400 font-medium hidden sm:inline-block">
-                🟢 Đã tự động lưu
-              </span>
-
-              ${isLast ? `
-                <button
-                  onclick="window.ExamTaking.promptSubmit()"
-                  class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition flex items-center space-x-1.5"
-                >
-                  <span>Hoàn thành & Nộp bài</span>
-                  <span>✓</span>
-                </button>
-              ` : `
-                <button
-                  onclick="window.ExamTaking.nextQuestion()"
-                  class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/20 transition flex items-center space-x-1.5"
-                >
-                  <span>Câu tiếp theo</span>
-                  <span>→</span>
-                </button>
-              `}
-            </div>
-
+          <div id="examQuestionContainer" class="lg:col-span-8 flex flex-col justify-between space-y-6">
+            ${this._renderQuestionCardHtml(currentQ, totalQ, isFirst, isLast, isFlagged)}
           </div>
 
           <!-- Right: Desktop Question Navigation Palette (lg:col-span-4) -->
@@ -761,14 +674,14 @@ const ExamTaking = {
               
               <div class="flex items-center justify-between">
                 <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">Bảng Điều Hướng</h4>
-                <span class="text-xs font-bold text-blue-600 dark:text-blue-400">
+                <span id="examPaletteAnsweredText" class="text-xs font-bold text-blue-600 dark:text-blue-400">
                   ${answeredCount} / ${totalQ} câu
                 </span>
               </div>
 
               <!-- Progress Bar -->
               <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div class="bg-blue-600 h-full transition-all duration-300" style="width: ${(answeredCount / totalQ) * 100}%"></div>
+                <div id="examPaletteProgressBar" class="bg-blue-600 h-full transition-all duration-300" style="width: ${(answeredCount / totalQ) * 100}%"></div>
               </div>
 
               <!-- Status Legend -->
@@ -795,6 +708,7 @@ const ExamTaking = {
 
                   return `
                     <button
+                      id="palBtn_d_${idx}"
                       onclick="window.ExamTaking.goToQuestion(${idx})"
                       class="pal-btn relative h-10 rounded-xl border font-bold text-xs flex items-center justify-center transition ${colorClass} ${ringClass}"
                     >
@@ -833,7 +747,11 @@ const ExamTaking = {
               const isCurrent = idx === this.currentIndex;
               let bg = state === 'flagged' ? 'bg-amber-500 text-white' : (state === 'answered' ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300');
               return `
-                <button onclick="window.ExamTaking.goToQuestion(${idx}); document.getElementById('paletteMobileModal').classList.add('hidden')" class="h-10 rounded-xl font-bold text-xs ${bg} ${isCurrent ? 'ring-2 ring-blue-500' : ''}">
+                <button
+                  id="palBtn_m_${idx}"
+                  onclick="window.ExamTaking.goToQuestion(${idx}); document.getElementById('paletteMobileModal').classList.add('hidden')"
+                  class="h-10 rounded-xl font-bold text-xs ${bg} ${isCurrent ? 'ring-2 ring-blue-500' : ''}"
+                >
                   ${idx + 1} ${state === 'flagged' ? '🚩' : ''}
                 </button>
               `;
@@ -955,6 +873,102 @@ const ExamTaking = {
     `;
   },
 
+  _renderQuestionCardHtml(currentQ, totalQ, isFirst, isLast, isFlagged) {
+    return `
+      <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-8 shadow-sm">
+        
+        <!-- Question Header Meta -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-6">
+          <div class="flex items-center space-x-2">
+            <span class="px-3 py-1 rounded-xl text-xs font-black bg-blue-600 text-white">
+              Câu ${this.currentIndex + 1} / ${totalQ}
+            </span>
+            <span class="px-2.5 py-1 rounded-xl text-xs font-bold ${
+              currentQ.part === 1 ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
+              currentQ.part === 2 ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+              'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+            }">
+              ${currentQ.part === 1 ? 'Phần I: 4 Lựa chọn' : currentQ.part === 2 ? 'Phần II: Đúng / Sai' : 'Phần III: Điền số'}
+            </span>
+            <span class="text-xs text-slate-400 font-medium">
+              (${currentQ.points || (currentQ.part === 1 ? 0.25 : (currentQ.part === 2 ? 1.0 : 0.5))} điểm)
+            </span>
+          </div>
+
+          <!-- Flag for review button -->
+          <button
+            id="examQuestionFlagBtn"
+            onclick="window.ExamTaking.toggleFlag()"
+            class="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition ${
+              isFlagged
+                ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/20'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }"
+          >
+            <span>🚩</span>
+            <span class="hidden sm:inline">${isFlagged ? 'Đã xem lại' : 'Xem lại'}</span>
+          </button>
+        </div>
+
+        <!-- Question Content (Rendered with KaTeX) -->
+        <div class="text-base sm:text-lg text-slate-800 dark:text-slate-100 font-medium leading-relaxed py-1 mb-6 overflow-visible">
+          ${MathRenderer.renderToString(currentQ.content)}
+        </div>
+
+        <!-- Optional Image -->
+        ${currentQ.image ? `
+          <div class="mb-6 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-w-md mx-auto">
+            <img src="${currentQ.image}" alt="Hình minh họa" class="w-full object-contain" />
+          </div>
+        ` : ''}
+
+        <!-- Interactive Answers according to Part -->
+        <div class="mt-6">
+          ${this._renderQuestionAnswers(currentQ)}
+        </div>
+
+      </div>
+
+      <!-- Bottom Navigation Bar -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 flex items-center justify-between shadow-sm">
+        <button
+          onclick="window.ExamTaking.prevQuestion()"
+          ${isFirst ? 'disabled' : ''}
+          class="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-1.5 transition ${
+            isFirst
+              ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400'
+              : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+          }"
+        >
+          <span>←</span>
+          <span>Câu trước</span>
+        </button>
+
+        <span id="saveStatusIndicator" class="text-xs text-slate-400 font-medium hidden sm:inline-block">
+          🟢 Đã tự động lưu
+        </span>
+
+        ${isLast ? `
+          <button
+            onclick="window.ExamTaking.promptSubmit()"
+            class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition flex items-center space-x-1.5"
+          >
+            <span>Hoàn thành & Nộp bài</span>
+            <span>✓</span>
+          </button>
+        ` : `
+          <button
+            onclick="window.ExamTaking.nextQuestion()"
+            class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/20 transition flex items-center space-x-1.5"
+          >
+            <span>Câu tiếp theo</span>
+            <span>→</span>
+          </button>
+        `}
+      </div>
+    `;
+  },
+
   _getQuestionState(q) {
     if (this.flaggedQuestions[q.id]) return 'flagged';
     const a = this.answers[q.id];
@@ -976,6 +990,7 @@ const ExamTaking = {
             const isChosen = selected === opt.id;
             return `
               <div
+                id="part1_opt_${q.id}_${opt.id}"
                 onclick="window.ExamTaking.selectPart1Choice('${q.id}', '${opt.id}')"
                 class="cursor-pointer p-4 rounded-2xl border transition-all flex items-start space-x-3 ${
                   isChosen
@@ -983,11 +998,14 @@ const ExamTaking = {
                     : 'border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
                 }"
               >
-                <div class="w-8 h-8 rounded-xl font-black text-sm flex items-center justify-center shrink-0 transition ${
-                  isChosen
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                }">
+                <div
+                  id="part1_circle_${q.id}_${opt.id}"
+                  class="w-8 h-8 rounded-xl font-black text-sm flex items-center justify-center shrink-0 transition ${
+                    isChosen
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  }"
+                >
                   ${opt.id}
                 </div>
                 <div class="text-sm sm:text-base text-slate-800 dark:text-slate-200 py-1 leading-relaxed overflow-visible">
@@ -1030,6 +1048,7 @@ const ExamTaking = {
                   <!-- 2 Nút Đúng / Sai -->
                   <div class="flex items-center space-x-2 shrink-0 self-end sm:self-center">
                     <button
+                      id="part2_btn_true_${q.id}_${sub.id}"
                       onclick="window.ExamTaking.selectPart2Choice('${q.id}', '${sub.id}', true)"
                       class="px-4 py-2 rounded-xl font-bold text-xs transition ${
                         isTrue
@@ -1040,6 +1059,7 @@ const ExamTaking = {
                       ✓ Đúng
                     </button>
                     <button
+                      id="part2_btn_false_${q.id}_${sub.id}"
                       onclick="window.ExamTaking.selectPart2Choice('${q.id}', '${sub.id}', false)"
                       class="px-4 py-2 rounded-xl font-bold text-xs transition ${
                         isFalse
@@ -1085,48 +1105,192 @@ const ExamTaking = {
     }
   },
 
-  // Handlers
+  // Cập nhật trạng thái hiển thị của toàn bộ Bảng Palette (0ms)
+  _updatePaletteUI() {
+    const totalQ = this.shuffledQuestions.length;
+    let answeredCount = 0;
+    this.shuffledQuestions.forEach(q => {
+      const a = this.answers[q.id];
+      if (q.part === 1 && a) answeredCount++;
+      else if (q.part === 2 && a && Object.keys(a).length > 0) answeredCount++;
+      else if (q.part === 3 && a && String(a).trim() !== '') answeredCount++;
+    });
+
+    // Cập nhật nút đếm trên Header Mobile
+    const headerCounter = document.getElementById('examAnsweredCountHeader');
+    if (headerCounter) {
+      headerCounter.textContent = `📋 ${answeredCount}/${totalQ}`;
+    }
+
+    // Cập nhật bộ đếm & thanh tiến độ Desktop Palette
+    const paletteText = document.getElementById('examPaletteAnsweredText');
+    if (paletteText) {
+      paletteText.textContent = `${answeredCount} / ${totalQ} câu`;
+    }
+    const progressBar = document.getElementById('examPaletteProgressBar');
+    if (progressBar) {
+      progressBar.style.width = `${(answeredCount / totalQ) * 100}%`;
+    }
+
+    // Cập nhật từng nút câu hỏi trên cả Desktop & Mobile Palette
+    this.shuffledQuestions.forEach((q, idx) => {
+      const state = this._getQuestionState(q);
+      const isCurrent = idx === this.currentIndex;
+
+      let colorClass = 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+      if (state === 'flagged') {
+        colorClass = 'bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-500/20';
+      } else if (state === 'answered') {
+        colorClass = 'bg-emerald-500 text-white border-emerald-600 shadow-sm shadow-emerald-500/20';
+      }
+
+      const ringClass = isCurrent ? 'ring-2 ring-blue-600 dark:ring-blue-400 ring-offset-2 dark:ring-offset-slate-900 scale-105 font-black' : '';
+
+      // Desktop Button
+      const btnD = document.getElementById(`palBtn_d_${idx}`);
+      if (btnD) {
+        btnD.className = `pal-btn relative h-10 rounded-xl border font-bold text-xs flex items-center justify-center transition ${colorClass} ${ringClass}`;
+        btnD.innerHTML = `<span>${idx + 1}</span>${state === 'flagged' ? '<span class="absolute -top-1 -right-1 text-[9px]">🚩</span>' : ''}`;
+      }
+
+      // Mobile Button
+      const btnM = document.getElementById(`palBtn_m_${idx}`);
+      if (btnM) {
+        let mBg = state === 'flagged' ? 'bg-amber-500 text-white' : (state === 'answered' ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300');
+        btnM.className = `h-10 rounded-xl font-bold text-xs ${mBg} ${isCurrent ? 'ring-2 ring-blue-500' : ''}`;
+        btnM.innerHTML = `${idx + 1} ${state === 'flagged' ? '🚩' : ''}`;
+      }
+    });
+  },
+
+  // Cập nhật chỉ riêng Khung Câu Hỏi Hiện Tại (Siêu tốc < 3ms, không re-render toàn app)
+  _updateQuestionView() {
+    const qContainer = document.getElementById('examQuestionContainer');
+    if (qContainer) {
+      const currentQ = this.shuffledQuestions[this.currentIndex];
+      const totalQ = this.shuffledQuestions.length;
+      const isFirst = this.currentIndex === 0;
+      const isLast = this.currentIndex === totalQ - 1;
+      const isFlagged = Boolean(this.flaggedQuestions[currentQ.id]);
+
+      qContainer.innerHTML = this._renderQuestionCardHtml(currentQ, totalQ, isFirst, isLast, isFlagged);
+
+      // Render công thức Toán KaTeX cục bộ bên trong khung câu hỏi
+      if (typeof MathRenderer !== 'undefined') {
+        MathRenderer.renderElement(qContainer);
+      }
+
+      // Cập nhật highlight vị trí câu hỏi trên Bảng Palette
+      this._updatePaletteUI();
+
+      // Cuộn mượt về đầu câu hỏi trên mobile nếu cần
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else {
+      window.App.renderApp();
+    }
+  },
+
+  // Handlers phản hồi 0ms (Local DOM updates)
   selectPart1Choice(qId, choiceId) {
     this.answers[qId] = choiceId;
     this._saveProgress();
-    window.App.renderApp();
+
+    // Cập nhật trực tiếp class 4 lựa chọn trong DOM (0ms)
+    const currentQ = this.shuffledQuestions[this.currentIndex];
+    if (currentQ && currentQ.id === qId && currentQ.options) {
+      currentQ.options.forEach(opt => {
+        const isChosen = opt.id === choiceId;
+        const optEl = document.getElementById(`part1_opt_${qId}_${opt.id}`);
+        const circleEl = document.getElementById(`part1_circle_${qId}_${opt.id}`);
+        if (optEl) {
+          optEl.className = `cursor-pointer p-4 rounded-2xl border transition-all flex items-start space-x-3 ${
+            isChosen
+              ? 'border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 dark:border-blue-500 shadow-sm shadow-blue-500/10'
+              : 'border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
+          }`;
+        }
+        if (circleEl) {
+          circleEl.className = `w-8 h-8 rounded-xl font-black text-sm flex items-center justify-center shrink-0 transition ${
+            isChosen
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+          }`;
+        }
+      });
+    }
+    this._updatePaletteUI();
   },
 
   selectPart2Choice(qId, subId, isTrue) {
     if (!this.answers[qId]) this.answers[qId] = {};
     this.answers[qId][subId] = isTrue;
     this._saveProgress();
-    window.App.renderApp();
+
+    // Cập nhật trực tiếp 2 nút Đúng / Sai trong DOM (0ms)
+    const trueBtn = document.getElementById(`part2_btn_true_${qId}_${subId}`);
+    const falseBtn = document.getElementById(`part2_btn_false_${qId}_${subId}`);
+    if (trueBtn) {
+      trueBtn.className = `px-4 py-2 rounded-xl font-bold text-xs transition ${
+        isTrue === true
+          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+      }`;
+    }
+    if (falseBtn) {
+      falseBtn.className = `px-4 py-2 rounded-xl font-bold text-xs transition ${
+        isTrue === false
+          ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+      }`;
+    }
+    this._updatePaletteUI();
   },
 
   inputPart3Answer(qId, val) {
     this.answers[qId] = val;
     this._saveProgress();
+    this._updatePaletteUI();
   },
 
   toggleFlag() {
-    const qId = this.shuffledQuestions[this.currentIndex].id;
+    const q = this.shuffledQuestions[this.currentIndex];
+    if (!q) return;
+    const qId = q.id;
     this.flaggedQuestions[qId] = !this.flaggedQuestions[qId];
     this._saveProgress();
-    window.App.renderApp();
+
+    const isFlagged = Boolean(this.flaggedQuestions[qId]);
+    const flagBtn = document.getElementById('examQuestionFlagBtn');
+    if (flagBtn) {
+      flagBtn.className = `px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition ${
+        isFlagged
+          ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/20'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+      }`;
+      flagBtn.innerHTML = `<span>🚩</span><span class="hidden sm:inline">${isFlagged ? 'Đã xem lại' : 'Xem lại'}</span>`;
+    }
+    this._updatePaletteUI();
   },
 
   goToQuestion(idx) {
+    if (idx < 0 || idx >= this.shuffledQuestions.length) return;
     this.currentIndex = idx;
-    window.App.renderApp();
+    this._updateQuestionView();
   },
 
   prevQuestion() {
     if (this.currentIndex > 0) {
       this.currentIndex--;
-      window.App.renderApp();
+      this._updateQuestionView();
     }
   },
 
   nextQuestion() {
     if (this.currentIndex < this.shuffledQuestions.length - 1) {
       this.currentIndex++;
-      window.App.renderApp();
+      this._updateQuestionView();
     }
   },
 

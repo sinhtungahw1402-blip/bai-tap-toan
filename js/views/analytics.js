@@ -21,9 +21,11 @@ const Analytics = {
     const submissions = (presetSubmissions ? presetSubmissions.filter(s => s.examId === currentExam.id) : null) || await DB.getSubmissions(currentExam.id);
     const assignedClasses = currentExam.assignedClasses || [];
     
-    // Danh sách học sinh thuộc diện thi đề này
+    // Danh sách học sinh thuộc diện thi đề này (chuẩn hóa tên lớp)
+    const norm = (s) => String(s || '').trim().toUpperCase();
+    const assignedNorms = assignedClasses.map(norm);
     const targetStudents = assignedClasses.length > 0
-      ? students.filter(s => assignedClasses.includes(s.class))
+      ? students.filter(s => assignedNorms.includes(norm(s.class)))
       : students;
 
     const subMap = {};
