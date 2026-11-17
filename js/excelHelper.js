@@ -1,3 +1,100 @@
+// Azota Toán - Image Helper (Xử lý ảnh công thức hình học, đồ thị, liên kết Google Drive, base64)
+const ImageHelper = {
+  // Trích xuất tên file từ đường dẫn hoặc URL (ví dụ: "G:\My Drive\...\ks13-1.png" -> "ks13-1.png")
+  getFileName(pathOrUrl) {
+    if (!pathOrUrl || typeof pathOrUrl !== 'string') return '';
+    const clean = pathOrUrl.trim().split('?')[0].split('#')[0];
+    const parts = clean.split(/[/\\]/);
+    return parts[parts.length - 1] || '';
+  },
+
+  // Kiểm tra xem chuỗi có phải đường dẫn file máy tính chưa được tải lên web không
+  isLocalUnuploaded(str) {
+    if (!str || typeof str !== 'string') return false;
+    const trimmed = str.trim();
+    if (!trimmed) return false;
+    // Data URL hoặc Blob URL hoặc Web URL chuẩn -> đã tải lên
+    if (trimmed.startsWith('data:image/') || trimmed.startsWith('blob:') || /^https?:\/\//i.test(trimmed)) {
+      return false;
+    }
+    // Nếu là đường dẫn ổ đĩa C:\, G:\ hoặc chứa đuôi mở rộng file ảnh
+    if (/^[a-zA-Z]:[\\/]/.test(trimmed) || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(trimmed)) {
+      // Nếu tên file đã được tích hợp sẵn trong BUILTIN_EXAM_IMAGES thì không coi là unuploaded
+      const fileName = this.getFileName(trimmed);
+      const builtinMap = (typeof BUILTIN_EXAM_IMAGES !== 'undefined') ? BUILTIN_EXAM_IMAGES : (typeof window !== 'undefined' ? window.BUILTIN_EXAM_IMAGES : null);
+      if (fileName && builtinMap && builtinMap[fileName]) {
+        return false;
+      }
+      return true;
+    }
+    return false;
+  },
+
+  // Chuyển đổi link chia sẻ Google Drive sang link xem ảnh trực tiếp
+  // Hỗ trợ cả 3 dạng:
+  // 1. https://drive.google.com/file/d/FILE_ID/view...
+  // 2. https://drive.google.com/open?id=FILE_ID
+  // 3. https://drive.google.com/uc?id=FILE_ID
+  convertGoogleDriveUrl(url) {
+    if (!url || typeof url !== 'string') return url;
+    const trimmed = url.trim();
+    // Khớp /file/d/FILE_ID
+    const match1 = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match1 && match1[1]) {
+      return `https://lh3.googleusercontent.com/d/${match1[1]}`;
+    }
+    // Khớp id=FILE_ID
+    const match2 = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match2 && match2[1] && (trimmed.includes('drive.google.com') || trimmed.includes('docs.google.com'))) {
+      return `https://lh3.googleusercontent.com/d/${match2[1]}`;
+    }
+    return trimmed;
+  },
+
+  // Giải quyết và chuẩn hóa URL ảnh hiển thị được trên web & điện thoại
+  resolveImageUrl(imgStr) {
+    if (!imgStr || typeof imgStr !== 'string') return '';
+    const trimmed = imgStr.trim();
+    if (!trimmed) return '';
+
+    // 1. Base64 Data URL hoặc Blob
+    if (trimmed.startsWith('data:image/') || trimmed.startsWith('blob:')) {
+      return trimmed;
+    }
+
+    // 2. Tra cứu từ kho ảnh tích hợp BUILTIN_EXAM_IMAGES (Ví dụ: ks13-1.png -> ks13-8.png)
+    const fileName = this.getFileName(trimmed);
+    const builtinMap = (typeof BUILTIN_EXAM_IMAGES !== 'undefined') ? BUILTIN_EXAM_IMAGES : (typeof window !== 'undefined' ? window.BUILTIN_EXAM_IMAGES : null);
+    if (fileName && builtinMap && builtinMap[fileName]) {
+      return builtinMap[fileName];
+    }
+
+    // 3. Link Google Drive
+    if (trimmed.includes('drive.google.com') || trimmed.includes('docs.google.com')) {
+      return this.convertGoogleDriveUrl(trimmed);
+    }
+
+    // 4. Link web http/https
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+
+    // 5. Đường dẫn cục bộ chưa tải lên
+    return trimmed;
+  },
+
+  // Đọc file ảnh từ máy người dùng thành chuỗi Base64 Data URL
+  readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) return reject(new Error('Chưa chọn file'));
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  }
+};
+
 // Azota Toán - SheetJS Excel Helper (Nhập/Xuất đề thi, Học sinh, Báo cáo thống kê)
 const ExcelHelper = {
   // 1. TẠO VÀ TẢI FILE EXCEL MẪU ĐỀ THI
@@ -146,7 +243,10 @@ const ExcelHelper = {
         const partVal = parseInt(row[0], 10);
         const qNum = parseInt(row[1], 10) || (questions.length + 1);
         const content = String(row[2] || '').trim();
-        const image = String(row[3] || '').trim();
+        const rawImage = String(row[3] || '').trim();
+        const resolvedImage = ImageHelper.resolveImageUrl(rawImage);
+        const imageFileName = ImageHelper.getFileName(rawImage);
+        const finalImage = resolvedImage || rawImage;
         const explanation = String(row[19] || '').trim();
         const customPoints = row[20] !== '' && !isNaN(parseFloat(row[20])) ? parseFloat(row[20]) : null;
 
@@ -183,7 +283,9 @@ const ExcelHelper = {
             part: 1,
             questionNumber: qNum,
             content,
-            image,
+            image: finalImage,
+            rawImage,
+            imageFileName,
             options: [
               { id: 'A', text: optA },
               { id: 'B', text: optB },
@@ -232,7 +334,9 @@ const ExcelHelper = {
             part: 2,
             questionNumber: qNum,
             content,
-            image,
+            image: finalImage,
+            rawImage,
+            imageFileName,
             subItems: [
               { id: 'a', text: subA, correct: bA },
               { id: 'b', text: subB, correct: bB },
@@ -263,7 +367,9 @@ const ExcelHelper = {
             part: 3,
             questionNumber: qNum,
             content,
-            image,
+            image: finalImage,
+            rawImage,
+            imageFileName,
             acceptedAnswers,
             tolerance,
             explanation,
@@ -272,11 +378,13 @@ const ExcelHelper = {
         }
       }
 
+      const unuploadedCount = questions.filter(q => ImageHelper.isLocalUnuploaded(q.image)).length;
+
       if (errors.length > 0) {
-        return { success: false, questions, errors };
+        return { success: false, questions, errors, unuploadedCount };
       }
 
-      return { success: true, questions, errors: [] };
+      return { success: true, questions, errors: [], unuploadedCount };
     } catch (err) {
       return { success: false, errors: ['Không thể đọc file Excel: ' + err.message] };
     }
@@ -475,4 +583,10 @@ const ExcelHelper = {
   }
 };
 
-window.ExcelHelper = ExcelHelper;
+if (typeof window !== 'undefined') {
+  window.ImageHelper = ImageHelper;
+  window.ExcelHelper = ExcelHelper;
+} else if (typeof globalThis !== 'undefined') {
+  globalThis.ImageHelper = ImageHelper;
+  globalThis.ExcelHelper = ExcelHelper;
+}

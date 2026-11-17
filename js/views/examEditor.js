@@ -479,11 +479,53 @@ const ExamEditor = {
             </button>
           </div>
 
+          <!-- Batch Image Upload Toolbar -->
+          <div class="p-4 rounded-2xl bg-gradient-to-r from-blue-50/90 to-indigo-50/90 dark:from-slate-800 dark:to-slate-800/80 border border-blue-200/80 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                🖼️
+              </div>
+              <div>
+                <div class="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center space-x-2">
+                  <span>Quản Lý Hình Vẽ Đề Thi</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                    ${questions.filter(q => q.image && !ImageHelper.isLocalUnuploaded(q.image)).length} / ${questions.length} câu có hình
+                  </span>
+                </div>
+                ${questions.some(q => ImageHelper.isLocalUnuploaded(q.image)) ? `
+                  <div class="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                    ⚠️ Có ${questions.filter(q => ImageHelper.isLocalUnuploaded(q.image)).length} câu dùng ảnh cục bộ máy tính chưa tải lên web. Bấm "Tải lên hàng loạt ảnh" bên phải để chọn ảnh đưa lên web!
+                  </div>
+                ` : `
+                  <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Hỗ trợ tải lên hàng loạt ảnh từ máy tính (tự động khớp theo tên file như ks13-1.png, hoặc số thứ tự câu).
+                  </div>
+                `}
+              </div>
+            </div>
+
+            <label class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 cursor-pointer transition flex items-center space-x-1.5 shrink-0">
+              <span>📁 Tải Lên Hàng Loạt Ảnh</span>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onchange="window.ExamEditor.handleBatchImageUpload(event)"
+                class="hidden"
+              />
+            </label>
+          </div>
+
           <!-- Questions Cards List -->
           <div class="space-y-3">
-            ${questions.map((q, idx) => `
+            ${questions.map((q, idx) => {
+              const resolvedImg = ImageHelper.resolveImageUrl(q.image);
+              const isUnuploaded = ImageHelper.isLocalUnuploaded(q.image);
+              const fileName = ImageHelper.getFileName(q.image || q.rawImage || q.imageFileName || '');
+
+              return `
               <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm flex items-start justify-between gap-4">
-                <div class="space-y-1.5 flex-1">
+                <div class="space-y-1.5 flex-1 min-w-0">
                   <div class="flex items-center space-x-2">
                     <span class="px-2 py-0.5 rounded-lg text-xs font-black bg-blue-600 text-white">
                       Câu ${idx + 1}
@@ -499,6 +541,42 @@ const ExamEditor = {
                   <div class="text-sm font-medium text-slate-800 dark:text-slate-200 py-1 leading-relaxed overflow-visible">
                     ${MathRenderer.renderToString(q.content)}
                   </div>
+
+                  <!-- Question Diagram / Image Box -->
+                  ${(resolvedImg && !isUnuploaded) ? `
+                    <div class="mt-2.5 flex items-start space-x-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 w-fit max-w-full">
+                      <img src="${resolvedImg}" alt="Hình câu ${idx + 1}" class="h-20 max-w-[200px] object-contain rounded bg-white p-1 border border-slate-200 dark:border-slate-700" />
+                      <div class="text-[11px] space-y-1">
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1">
+                          <span>✓ Đã có hình vẽ minh họa</span>
+                          ${fileName ? `<span class="font-mono text-slate-400 font-normal">(${fileName})</span>` : ''}
+                        </span>
+                        <div class="flex items-center space-x-1 pt-1">
+                          <label class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-600 cursor-pointer transition shadow-xs">
+                            Đổi ảnh
+                            <input type="file" accept="image/*" onchange="window.ExamEditor.handleSingleQuestionImageUpload(${idx}, event)" class="hidden" />
+                          </label>
+                          <button type="button" onclick="window.ExamEditor.removeSingleQuestionImage(${idx})" class="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 font-bold transition">
+                            Xóa ảnh
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ` : (isUnuploaded ? `
+                    <div class="mt-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div class="text-amber-800 dark:text-amber-300 font-medium space-y-0.5">
+                        <div class="font-bold flex items-center space-x-1">
+                          <span>⚠️ Hình ảnh trên máy tính chưa được tải lên web:</span>
+                          <code class="bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded text-[11px] font-mono text-amber-900 dark:text-amber-200">${fileName || q.image}</code>
+                        </div>
+                        <div class="text-[11px] text-amber-700/80 dark:text-amber-400/80">Trình duyệt không thể tự động mở file trên ổ cứng. Vui lòng bấm "Chọn ảnh này" để tải ảnh lên.</div>
+                      </div>
+                      <label class="shrink-0 px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs cursor-pointer shadow-sm transition">
+                        📁 Chọn ảnh này
+                        <input type="file" accept="image/*" onchange="window.ExamEditor.handleSingleQuestionImageUpload(${idx}, event)" class="hidden" />
+                      </label>
+                    </div>
+                  ` : '')}
                 </div>
 
                 <div class="flex items-center space-x-1 shrink-0">
@@ -518,7 +596,8 @@ const ExamEditor = {
                   </button>
                 </div>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
         </div>
 
@@ -584,6 +663,70 @@ const ExamEditor = {
             <div class="mt-2 p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 overflow-visible">
               <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">👁️ Xem trước hiển thị công thức:</span>
               <div id="modalQLivePreview" class="text-sm font-medium text-slate-800 dark:text-slate-200 min-h-[24px] py-1 leading-relaxed overflow-visible"></div>
+            </div>
+          </div>
+
+          <!-- Image Section (Hình minh họa/Đồ thị/Bảng biến thiên) -->
+          <div class="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-black text-blue-900 dark:text-blue-200 uppercase tracking-wide flex items-center space-x-1.5">
+                <span>🖼️ Hình vẽ minh họa (Đồ thị, hình học, bảng biến thiên)</span>
+              </label>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">Tự động chuyển đổi file máy tính & Google Drive</span>
+            </div>
+
+            <!-- Upload from computer / phone OR paste link -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  📁 Chọn ảnh từ máy tính hoặc điện thoại:
+                </label>
+                <input
+                  type="file"
+                  id="modalQImageFileInput"
+                  accept="image/*"
+                  onchange="window.ExamEditor.handleModalImageFileSelect(event)"
+                  class="block w-full text-xs text-slate-500 dark:text-slate-400 file:mr-2.5 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-1"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  🌐 Hoặc dán link ảnh / link Google Drive:
+                </label>
+                <input
+                  type="text"
+                  id="modalQImageUrlInput"
+                  placeholder="https://drive.google.com/file/d/... hoặc URL ảnh"
+                  oninput="window.ExamEditor.handleModalImageUrlChange(this.value)"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <!-- Live Image Preview & Remove Button -->
+            <div id="modalQImagePreviewContainer" class="hidden relative p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1">
+                  <span>✅ Xem trước hình ảnh:</span>
+                  <span id="modalQImageSourceLabel" class="text-[10px] font-normal text-slate-400"></span>
+                </span>
+                <button
+                  type="button"
+                  onclick="window.ExamEditor.removeModalImage()"
+                  class="px-2.5 py-1 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/80 text-red-600 dark:text-red-400 text-xs font-bold transition flex items-center space-x-1"
+                >
+                  <span>🗑️ Xóa ảnh này</span>
+                </button>
+              </div>
+              <div class="flex justify-center bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2 border border-slate-100 dark:border-slate-800">
+                <img
+                  id="modalQImagePreviewEl"
+                  src=""
+                  alt="Xem trước hình câu hỏi"
+                  class="max-h-60 max-w-full object-contain rounded"
+                />
+              </div>
             </div>
           </div>
 
@@ -811,7 +954,98 @@ const ExamEditor = {
 
     this.excelErrors = [];
     this.currentExam.questions = result.questions;
-    alert(`Đã nhập thành công ${result.questions.length} câu hỏi từ file Excel!`);
+
+    const unuploaded = result.questions.filter(q => ImageHelper.isLocalUnuploaded(q.image));
+    if (unuploaded.length > 0) {
+      alert(`Đã nhập thành công ${result.questions.length} câu hỏi từ file Excel!\n\nLưu ý: Có ${unuploaded.length} câu chứa đường dẫn ảnh máy tính chưa tải lên web. Bạn hãy bấm "Tải lên hàng loạt ảnh" để chọn các ảnh từ máy tính tải lên web nhé!`);
+    } else {
+      alert(`Đã nhập thành công ${result.questions.length} câu hỏi từ file Excel!`);
+    }
+
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
+  },
+
+  // Tải lên hàng loạt ảnh từ máy tính cho toàn bộ đề thi
+  async handleBatchImageUpload(event) {
+    const files = Array.from(event.target.files || []);
+    if (!files || files.length === 0) return;
+
+    let matchedCount = 0;
+    for (const file of files) {
+      const fileName = file.name.trim().toLowerCase();
+      try {
+        const dataUrl = await ImageHelper.readFileAsDataURL(file);
+
+        let matched = false;
+        // 1. So khớp theo tên file chính xác
+        this.currentExam.questions.forEach((q) => {
+          const qName = ImageHelper.getFileName(q.image || q.rawImage || q.imageFileName || '').toLowerCase();
+          if (qName && (qName === fileName || fileName.includes(qName) || qName.includes(fileName))) {
+            q.image = dataUrl;
+            q.imageFileName = file.name;
+            matched = true;
+            matchedCount++;
+          }
+        });
+
+        // 2. So khớp theo số thứ tự câu (vd: ks13-1, cau-1, q1, hinh-1 -> câu số 1)
+        if (!matched) {
+          const numMatch = fileName.match(/(?:c[aâ]u|q|ks\d*-|part\d*-|hinh)?\s*(\d+)/i);
+          if (numMatch && numMatch[1]) {
+            const qNum = parseInt(numMatch[1], 10);
+            const targetQ = this.currentExam.questions.find(item => item.questionNumber === qNum);
+            if (targetQ && (!targetQ.image || ImageHelper.isLocalUnuploaded(targetQ.image))) {
+              targetQ.image = dataUrl;
+              targetQ.imageFileName = file.name;
+              matchedCount++;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi đọc file ảnh:', err);
+      }
+    }
+
+    event.target.value = '';
+    alert(`Đã cập nhật thành công ${matchedCount} hình vẽ vào các câu hỏi tương ứng!`);
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
+  },
+
+  // Tải ảnh cho một câu hỏi cụ thể trong danh sách
+  async handleSingleQuestionImageUpload(index, event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await ImageHelper.readFileAsDataURL(file);
+      if (this.currentExam.questions[index]) {
+        this.currentExam.questions[index].image = dataUrl;
+        this.currentExam.questions[index].imageFileName = file.name;
+      }
+    } catch (err) {
+      alert('Không thể tải file ảnh: ' + err.message);
+    }
+    event.target.value = '';
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
+      window.AdminDashboard.switchTab('exams');
+    } else {
+      window.App.renderApp();
+    }
+  },
+
+  // Xóa ảnh của một câu hỏi cụ thể trong danh sách
+  removeSingleQuestionImage(index) {
+    if (!this.currentExam.questions[index]) return;
+    this.currentExam.questions[index].image = '';
+    this.currentExam.questions[index].rawImage = '';
+    this.currentExam.questions[index].imageFileName = '';
     if (window.AdminDashboard && window.AdminDashboard.currentTab === 'exams') {
       window.AdminDashboard.switchTab('exams');
     } else {
@@ -825,6 +1059,69 @@ const ExamEditor = {
       window.AdminDashboard.switchTab('exams');
     } else {
       window.App.renderApp();
+    }
+  },
+
+  // Modal Image States & Helpers
+  modalCurrentImage: '',
+  modalCurrentImageFileName: '',
+
+  handleModalImageFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    ImageHelper.readFileAsDataURL(file).then(dataUrl => {
+      this.modalCurrentImage = dataUrl;
+      this.modalCurrentImageFileName = file.name;
+      const urlInput = document.getElementById('modalQImageUrlInput');
+      if (urlInput) urlInput.value = '';
+      this._updateModalImagePreview(dataUrl, `File máy tính: ${file.name}`);
+    }).catch(err => {
+      alert('Không thể đọc file ảnh: ' + err.message);
+    });
+  },
+
+  handleModalImageUrlChange(url) {
+    const trimmed = (url || '').trim();
+    if (!trimmed) {
+      this.modalCurrentImage = '';
+      this.modalCurrentImageFileName = '';
+      this._updateModalImagePreview('', '');
+      return;
+    }
+    const resolved = ImageHelper.resolveImageUrl(trimmed);
+    this.modalCurrentImage = resolved;
+    this.modalCurrentImageFileName = ImageHelper.getFileName(trimmed);
+    const isGdrive = trimmed.includes('drive.google.com') || trimmed.includes('docs.google.com');
+    this._updateModalImagePreview(resolved, isGdrive ? 'Đã chuyển đổi từ Google Drive' : 'Link Web');
+  },
+
+  removeModalImage() {
+    this.modalCurrentImage = '';
+    this.modalCurrentImageFileName = '';
+    const fileInput = document.getElementById('modalQImageFileInput');
+    if (fileInput) fileInput.value = '';
+    const urlInput = document.getElementById('modalQImageUrlInput');
+    if (urlInput) urlInput.value = '';
+    this._updateModalImagePreview('', '');
+  },
+
+  _updateModalImagePreview(url, sourceLabel = '') {
+    const container = document.getElementById('modalQImagePreviewContainer');
+    const imgEl = document.getElementById('modalQImagePreviewEl');
+    const labelEl = document.getElementById('modalQImageSourceLabel');
+    if (!container || !imgEl) return;
+
+    if (url && !ImageHelper.isLocalUnuploaded(url)) {
+      imgEl.src = url;
+      if (labelEl) labelEl.textContent = sourceLabel ? `(${sourceLabel})` : '';
+      container.classList.remove('hidden');
+    } else if (url && ImageHelper.isLocalUnuploaded(url)) {
+      imgEl.src = '';
+      if (labelEl) labelEl.textContent = `(Đường dẫn máy tính: ${url} - Cần chọn file ảnh tải lên)`;
+      container.classList.remove('hidden');
+    } else {
+      imgEl.src = '';
+      container.classList.add('hidden');
     }
   },
 
@@ -846,6 +1143,7 @@ const ExamEditor = {
       q = {
         part: 1,
         content: '',
+        image: '',
         options: [{ id: 'A', text: '' }, { id: 'B', text: '' }, { id: 'C', text: '' }, { id: 'D', text: '' }],
         correctAnswer: 'A',
         explanation: '',
@@ -858,6 +1156,31 @@ const ExamEditor = {
     document.getElementById('modalQContent').value = q.content || '';
     document.getElementById('modalQExplanation').value = q.explanation || '';
     document.getElementById('modalQPoints').value = q.points !== undefined && q.points !== null ? q.points : (q.part === 1 ? p1Default : (q.part === 2 ? p2Default : p3Default));
+
+    // Reset file input
+    const fileInput = document.getElementById('modalQImageFileInput');
+    if (fileInput) fileInput.value = '';
+
+    // Load & Resolve Image for Question Modal
+    const rawImg = q.image || q.rawImage || '';
+    const resolvedImg = ImageHelper.resolveImageUrl(rawImg);
+    this.modalCurrentImage = resolvedImg || rawImg;
+    this.modalCurrentImageFileName = q.imageFileName || ImageHelper.getFileName(rawImg);
+
+    const urlInput = document.getElementById('modalQImageUrlInput');
+    if (urlInput) {
+      urlInput.value = (rawImg && !rawImg.startsWith('data:image/')) ? rawImg : '';
+    }
+
+    let sourceNote = '';
+    if (this.modalCurrentImage.startsWith('data:image/')) {
+      sourceNote = this.modalCurrentImageFileName ? `Ảnh: ${this.modalCurrentImageFileName}` : 'Ảnh đã nhúng';
+    } else if (rawImg.includes('drive.google.com')) {
+      sourceNote = 'Google Drive';
+    } else if (rawImg) {
+      sourceNote = rawImg;
+    }
+    this._updateModalImagePreview(this.modalCurrentImage, sourceNote);
 
     this.handlePartChange(q.part, q);
     this.updateLiveMathPreview();
@@ -979,6 +1302,8 @@ const ExamEditor = {
       part,
       questionNumber: this.editingQuestionIndex >= 0 ? this.editingQuestionIndex + 1 : this.currentExam.questions.length + 1,
       content,
+      image: this.modalCurrentImage || '',
+      imageFileName: this.modalCurrentImageFileName || (this.editingQuestionIndex >= 0 ? (this.currentExam.questions[this.editingQuestionIndex].imageFileName || '') : ''),
       explanation,
       points
     };

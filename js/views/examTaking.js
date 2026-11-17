@@ -915,12 +915,17 @@ const ExamTaking = {
           ${MathRenderer.renderToString(currentQ.content)}
         </div>
 
-        <!-- Optional Image -->
-        ${currentQ.image ? `
-          <div class="mb-6 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-w-md mx-auto">
-            <img src="${currentQ.image}" alt="Hình minh họa" class="w-full object-contain" />
-          </div>
-        ` : ''}
+        <!-- Optional Image (Hỗ trợ Data URL, Google Drive, Built-in Diagrams) -->
+        ${(() => {
+          const rawImg = currentQ.image || currentQ.rawImage || '';
+          const resolved = (typeof ImageHelper !== 'undefined') ? ImageHelper.resolveImageUrl(rawImg) : rawImg;
+          if (!resolved || (typeof ImageHelper !== 'undefined' && ImageHelper.isLocalUnuploaded(resolved))) return '';
+          return `
+            <div class="mb-6 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-w-lg mx-auto bg-white p-3 shadow-xs">
+              <img src="${resolved}" alt="Hình minh họa câu hỏi" class="w-full object-contain max-h-80 sm:max-h-96 mx-auto rounded" />
+            </div>
+          `;
+        })()}
 
         <!-- Interactive Answers according to Part -->
         <div class="mt-6">

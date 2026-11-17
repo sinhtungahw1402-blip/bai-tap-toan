@@ -140,7 +140,7 @@ const DB = {
         });
       }
 
-      // Đảm bảo đề thi có cấu hình thang điểm partPoints chuẩn
+      // Đảm bảo đề thi có cấu hình thang điểm partPoints chuẩn và tự động số hóa ảnh đề thi
       if (Array.isArray(localData.exams)) {
         localData.exams.forEach(ex => {
           if (!ex.partPoints) {
@@ -150,6 +150,20 @@ const DB = {
           if (!Array.isArray(ex.assignedClasses)) {
             ex.assignedClasses = [];
             modified = true;
+          }
+          if (Array.isArray(ex.questions)) {
+            ex.questions.forEach(q => {
+              const rawImg = q.image || q.rawImage || '';
+              if (rawImg && typeof ImageHelper !== 'undefined') {
+                const resolved = ImageHelper.resolveImageUrl(rawImg);
+                if (resolved && resolved !== q.image && resolved.startsWith('data:image/')) {
+                  q.image = resolved;
+                  q.rawImage = rawImg;
+                  q.imageFileName = ImageHelper.getFileName(rawImg);
+                  modified = true;
+                }
+              }
+            });
           }
         });
       }

@@ -274,6 +274,18 @@ const ExamResult = {
           ${MathRenderer.renderToString(q.content)}
         </div>
 
+        <!-- Optional Image (Hỗ trợ Data URL, Google Drive, Built-in Diagrams) -->
+        ${(() => {
+          const rawImg = q.image || q.rawImage || '';
+          const resolved = (typeof ImageHelper !== 'undefined') ? ImageHelper.resolveImageUrl(rawImg) : rawImg;
+          if (!resolved || (typeof ImageHelper !== 'undefined' && ImageHelper.isLocalUnuploaded(resolved))) return '';
+          return `
+            <div class="my-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-w-lg mx-auto bg-white p-3 shadow-xs">
+              <img src="${resolved}" alt="Hình minh họa câu hỏi" class="w-full object-contain max-h-72 mx-auto rounded" />
+            </div>
+          `;
+        })()}
+
         <!-- Answers by Part -->
         <div class="pt-2">
           ${this._renderItemAnswersReview(q, res, submission)}
