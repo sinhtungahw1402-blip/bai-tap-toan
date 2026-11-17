@@ -1,5 +1,5 @@
 // Toán Thầy Tùng - Service Worker (PWA Offline Cache & Install)
-const CACHE_NAME = 'toan-thay-tung-v2.8';
+const CACHE_NAME = 'toan-thay-tung-v2.9';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

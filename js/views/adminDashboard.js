@@ -516,9 +516,9 @@ const AdminDashboard = {
   },
 
   resetSampleData() {
-    if (confirm('Bạn có chắc chắn muốn nạp lại dữ liệu mẫu (1 bài kiểm tra chuẩn 3 phần + 3 học sinh mẫu)? Dữ liệu hiện tại sẽ được thay thế.')) {
+    if (confirm('Bạn có chắc chắn muốn nạp lại dữ liệu chuẩn (87 học sinh 4 khối lớp + bài kiểm tra chuẩn)? Hệ thống sẽ khôi phục về danh sách 87 học sinh chuẩn không bị trùng lặp.')) {
       DB.resetToSampleData();
-      alert('Đã khôi phục dữ liệu mẫu thành công!');
+      alert('Đã khôi phục dữ liệu chuẩn thành công!');
       location.reload();
     }
   }

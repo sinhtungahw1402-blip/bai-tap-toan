@@ -13,11 +13,58 @@ const DB = {
   _listenersAttached: false,
   _subscribers: [],
 
+  // Chuẩn hóa tên lớp học (vd: "10", "Lớp 10", "LỚP 10" -> "LỚP 10")
+  normalizeClassName(cls) {
+    if (!cls) return 'LỚP 10';
+    const trimmed = String(cls).trim().toUpperCase();
+    if (trimmed.startsWith('LỚP ') || trimmed.startsWith('LỚP')) {
+      const numPart = trimmed.replace(/^LỚP\s*/i, '').trim();
+      return `LỚP ${numPart}`;
+    }
+    if (trimmed.startsWith('LOP ') || trimmed.startsWith('LOP')) {
+      const numPart = trimmed.replace(/^LOP\s*/i, '').trim();
+      return `LỚP ${numPart}`;
+    }
+    return `LỚP ${trimmed}`;
+  },
+
+  // Lọc bỏ học sinh trùng lặp (theo username hoặc họ tên + lớp)
+  _deduplicateStudents(studentsList) {
+    if (!Array.isArray(studentsList)) return [];
+    const seen = new Map();
+    const result = [];
+
+    studentsList.forEach(st => {
+      if (!st) return;
+      const u = (st.username || '').trim().toLowerCase();
+      const normClass = this.normalizeClassName(st.class);
+      st.class = normClass;
+
+      const key = u || `${(st.name || '').trim().toLowerCase()}_${normClass}`;
+      if (!seen.has(key)) {
+        seen.set(key, st);
+        result.push(st);
+      } else {
+        const existing = seen.get(key);
+        // Nếu bản ghi mới có ID chuẩn từ SampleData (hs_001..hs_087), ưu tiên dùng bản ghi có ID chuẩn
+        if (st.id && /^hs_\d+$/.test(st.id) && !/^hs_\d+$/.test(existing.id)) {
+          const idx = result.indexOf(existing);
+          if (idx >= 0) {
+            result[idx] = { ...existing, ...st, id: st.id };
+            seen.set(key, result[idx]);
+          }
+        }
+      }
+    });
+
+    return result;
+  },
+
   // Nạp bộ nhớ đệm In-Memory từ LocalStorage ngay từ mili-giây đầu tiên
   _initCache() {
     if (!this._cache.students || !this._cache.exams) {
       const local = this._getLocal();
-      this._cache.students = local.students || [];
+      this._cache.students = this._deduplicateStudents(local.students || []);
       this._cache.exams = local.exams || [];
       this._cache.submissions = local.submissions || [];
       this._cache.adminConfig = local.adminConfig || null;
@@ -58,11 +105,49 @@ const DB = {
       }, (err) => console.warn('[DB Realtime] Lỗi lắng nghe đề thi:', err));
     } catch (e) {}
 
-    // 2. Lắng nghe Học sinh
+    // 2. Lắng nghe Học sinh (Tự động lọc sạch trùng lặp & dọn dẹp Firestore Cloud)
     try {
       this.firestore.collection('students').onSnapshot((snap) => {
         if (!snap.empty) {
-          const cloudStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const rawStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          const seen = new Set();
+          const duplicateDocIds = [];
+          const cloudStudents = [];
+
+          rawStudents.forEach(st => {
+            const u = (st.username || '').trim().toLowerCase();
+            const normClass = this.normalizeClassName(st.class);
+            st.class = normClass;
+            const key = u || `${(st.name || '').trim().toLowerCase()}_${normClass}`;
+
+            if (seen.has(key)) {
+              duplicateDocIds.push(st.id);
+            } else {
+              seen.add(key);
+              cloudStudents.push(st);
+            }
+          });
+
+          // Xóa ngầm các doc thừa trên Cloud nếu có
+          if (duplicateDocIds.length > 0) {
+            console.log(`[DB Realtime] Phát hiện ${duplicateDocIds.length} bản ghi học sinh nhân bản trên Cloud, đang tự động dọn dẹp...`);
+            (async () => {
+              try {
+                for (let i = 0; i < duplicateDocIds.length; i += 400) {
+                  const slice = duplicateDocIds.slice(i, i + 400);
+                  const batch = this.firestore.batch();
+                  slice.forEach(id => {
+                    batch.delete(this.firestore.collection('students').doc(id));
+                  });
+                  await batch.commit();
+                }
+              } catch (delErr) {
+                console.warn('[DB Realtime] Lỗi xóa doc trùng Cloud:', delErr);
+              }
+            })();
+          }
+
           this._cache.students = cloudStudents;
           const local = this._getLocal();
           local.students = cloudStudents;
@@ -122,8 +207,19 @@ const DB = {
       this._saveLocal(initialDb, false);
       localData = initialDb;
     } else {
-      // Tự động đồng bộ và bổ sung học sinh mới từ SampleData (87 học sinh) vào CSDL máy hiện tại
       let modified = false;
+
+      // 1. Tự động lọc sạch học sinh trùng lặp trong CSDL cục bộ
+      if (Array.isArray(localData.students)) {
+        const cleanList = this._deduplicateStudents(localData.students);
+        if (cleanList.length !== localData.students.length) {
+          console.log(`[DB] Đã dọn dẹp ${localData.students.length - cleanList.length} học sinh trùng lặp trong bộ nhớ cục bộ!`);
+          localData.students = cleanList;
+          modified = true;
+        }
+      }
+
+      // 2. Tự động đồng bộ và bổ sung học sinh mới từ SampleData (87 học sinh) vào CSDL máy hiện tại
       if (Array.isArray(localData.students) && typeof SampleData !== 'undefined' && Array.isArray(SampleData.students)) {
         const existingMap = new Map();
         localData.students.forEach(s => {
@@ -135,6 +231,17 @@ const DB = {
           if (!existingMap.has(u)) {
             localData.students.push(s);
             existingMap.set(u, s);
+            modified = true;
+          }
+        });
+      }
+
+      // Chuẩn hóa tên lớp học cho toàn bộ học sinh (vd: "10" -> "LỚP 10")
+      if (Array.isArray(localData.students)) {
+        localData.students.forEach(s => {
+          const norm = this.normalizeClassName(s.class);
+          if (s.class !== norm) {
+            s.class = norm;
             modified = true;
           }
         });
@@ -210,6 +317,9 @@ const DB = {
 
         // Gắn lắng nghe Realtime chạy nền (hoàn toàn không chặn luồng khởi động app)
         this._attachRealtimeListeners();
+
+        // Tự động kiểm tra và dọn dẹp học sinh trùng lặp trên Cloud
+        this.cleanDuplicateStudents().catch(e => console.warn('[DB] Lưu ý khi dọn dẹp trùng lặp Cloud:', e));
 
         // Tự động kiểm tra Cloud ngầm: Nếu Cloud chưa có dữ liệu thì đẩy dữ liệu cục bộ lên Cloud
         this.firestore.collection('students').limit(1).get().then(snapCheck => {
@@ -319,6 +429,7 @@ const DB = {
   async getStudents(forceFresh = false) {
     this._initCache();
     if (!forceFresh && this._cache.students && this._cache.students.length > 0) {
+      this._cache.students = this._deduplicateStudents(this._cache.students);
       return this._cache.students;
     }
 
@@ -326,7 +437,8 @@ const DB = {
       try {
         const snap = await this.firestore.collection('students').get();
         if (!snap.empty) {
-          const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const students = this._deduplicateStudents(raw);
           this._cache.students = students;
           const local = this._getLocal();
           local.students = students;
@@ -337,7 +449,8 @@ const DB = {
     }
 
     const db = this._getLocal();
-    this._cache.students = db.students || [];
+    const students = this._deduplicateStudents(db.students || []);
+    this._cache.students = students;
     return this._cache.students;
   },
 
@@ -348,18 +461,22 @@ const DB = {
 
   async saveStudent(studentData) {
     this._initCache();
+    studentData.class = this.normalizeClassName(studentData.class);
     const students = this._cache.students || [];
-    const index = students.findIndex(s => s.id === studentData.id);
+    const u = (studentData.username || '').trim().toLowerCase();
+    const index = students.findIndex(s => s.id === studentData.id || (u && (s.username || '').trim().toLowerCase() === u));
 
     if (index >= 0) {
+      studentData.id = students[index].id;
       students[index] = { ...students[index], ...studentData };
     } else {
       students.push(studentData);
     }
-    this._cache.students = students;
+    const cleanList = this._deduplicateStudents(students);
+    this._cache.students = cleanList;
 
     const db = this._getLocal();
-    db.students = students;
+    db.students = cleanList;
     this._saveLocal(db);
 
     if (this.isFirebaseActive && this.firestore) {
@@ -432,32 +549,117 @@ const DB = {
   async saveStudentsBulk(newStudentsList) {
     this._initCache();
     const existing = [...(this._cache.students || [])];
-    
+    const toSaveToCloud = [];
+
     newStudentsList.forEach(st => {
-      const idx = existing.findIndex(e => e.username === st.username);
+      st.class = this.normalizeClassName(st.class);
+      const u = (st.username || '').trim().toLowerCase();
+      const idx = existing.findIndex(e => (e.username || '').trim().toLowerCase() === u);
       if (idx >= 0) {
-        existing[idx] = { ...existing[idx], ...st };
+        // Giữ ID của doc hiện tại để tránh sinh doc mới trùng trên Firestore
+        const merged = { ...existing[idx], ...st, id: existing[idx].id };
+        existing[idx] = merged;
+        toSaveToCloud.push(merged);
       } else {
         existing.push(st);
+        toSaveToCloud.push(st);
       }
     });
 
-    this._cache.students = existing;
+    const deduplicated = this._deduplicateStudents(existing);
+    this._cache.students = deduplicated;
     const db = this._getLocal();
-    db.students = existing;
+    db.students = deduplicated;
     this._saveLocal(db);
 
     if (this.isFirebaseActive && this.firestore) {
       try {
-        const batch = this.firestore.batch();
-        newStudentsList.forEach(st => {
-          const docRef = this.firestore.collection('students').doc(st.id);
-          batch.set(docRef, st, { merge: true });
-        });
-        await batch.commit();
+        for (let i = 0; i < toSaveToCloud.length; i += 400) {
+          const slice = toSaveToCloud.slice(i, i + 400);
+          const batch = this.firestore.batch();
+          slice.forEach(st => {
+            const docRef = this.firestore.collection('students').doc(st.id);
+            batch.set(docRef, st, { merge: true });
+          });
+          await batch.commit();
+        }
       } catch (e) {}
     }
-    return existing;
+    return deduplicated;
+  },
+
+  // Dọn dẹp học sinh trùng lặp cả ở LocalStorage và Firestore Cloud
+  async cleanDuplicateStudents() {
+    this._initCache();
+    const local = this._getLocal();
+    const currentStudents = local.students || this._cache.students || [];
+
+    const seen = new Map();
+    const uniqueStudents = [];
+    const duplicateDocIds = [];
+
+    currentStudents.forEach(st => {
+      if (!st) return;
+      const u = (st.username || '').trim().toLowerCase();
+      const normClass = this.normalizeClassName(st.class);
+      st.class = normClass;
+
+      const key = u || `${(st.name || '').trim().toLowerCase()}_${normClass}`;
+      if (seen.has(key)) {
+        if (st.id) duplicateDocIds.push(st.id);
+      } else {
+        seen.set(key, st);
+        uniqueStudents.push(st);
+      }
+    });
+
+    const removedCount = currentStudents.length - uniqueStudents.length;
+
+    // Cập nhật bộ nhớ đệm và LocalStorage
+    this._cache.students = uniqueStudents;
+    local.students = uniqueStudents;
+    this._saveLocal(local, false);
+
+    // Xóa triệt để các doc bị trùng trên Firestore
+    if (this.isFirebaseActive && this.firestore) {
+      try {
+        const snap = await this.firestore.collection('students').get();
+        if (!snap.empty) {
+          const cloudSeen = new Map();
+          const cloudDuplicatesToDelete = [];
+
+          snap.docs.forEach(doc => {
+            const data = doc.data();
+            const u = (data.username || '').trim().toLowerCase();
+            const normClass = this.normalizeClassName(data.class);
+            const key = u || `${(data.name || '').trim().toLowerCase()}_${normClass}`;
+
+            if (cloudSeen.has(key)) {
+              cloudDuplicatesToDelete.push(doc.id);
+            } else {
+              cloudSeen.set(key, doc.id);
+            }
+          });
+
+          if (cloudDuplicatesToDelete.length > 0) {
+            console.log(`[DB] Đang xóa ${cloudDuplicatesToDelete.length} bản ghi học sinh trùng lặp trên Firebase Cloud...`);
+            for (let i = 0; i < cloudDuplicatesToDelete.length; i += 400) {
+              const slice = cloudDuplicatesToDelete.slice(i, i + 400);
+              const batch = this.firestore.batch();
+              slice.forEach(id => {
+                batch.delete(this.firestore.collection('students').doc(id));
+              });
+              await batch.commit();
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[DB] Lỗi đồng bộ xóa trùng trên Cloud:', err);
+      }
+    }
+
+    this._notifySubscribers('students', uniqueStudents);
+    return { success: true, removedCount, remainingCount: uniqueStudents.length };
   },
 
   async deleteStudent(studentId) {

@@ -4,7 +4,8 @@ const StudentManagement = {
   searchQuery: '',
 
   async render(presetStudents = null) {
-    const students = presetStudents || await DB.getStudents();
+    let students = presetStudents || await DB.getStudents();
+    students = DB._deduplicateStudents(students);
     const classes = Array.from(new Set(students.map(s => s.class).filter(Boolean))).sort();
 
     let filtered = students;
@@ -30,6 +31,14 @@ const StudentManagement = {
 
           <!-- Buttons -->
           <div class="flex items-center flex-wrap gap-2">
+            <button
+              onclick="window.StudentManagement.cleanDuplicates()"
+              class="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold text-xs transition flex items-center space-x-1.5 border border-amber-200 dark:border-amber-900/50"
+              title="Lọc bỏ học sinh trùng lặp (nếu có) và đồng bộ lại danh sách chuẩn"
+            >
+              <span>🧹 Lọc Bỏ Trùng Lặp</span>
+            </button>
+
             <button
               onclick="window.ExcelHelper.downloadStudentTemplate()"
               class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition flex items-center space-x-1.5"
@@ -66,7 +75,10 @@ const StudentManagement = {
             >
               Tất cả (${students.length})
             </button>
-            ${classes.map(c => `
+            ${classes.map(c => {
+              const displayName = c.toUpperCase().startsWith('LỚP') ? c : `Lớp ${c}`;
+              const count = students.filter(s => s.class === c).length;
+              return `
               <button
                 onclick="window.StudentManagement.setClassFilter('${c}')"
                 class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${
@@ -75,9 +87,10 @@ const StudentManagement = {
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                 }"
               >
-                Lớp ${c} (${students.filter(s => s.class === c).length})
+                ${displayName} (${count})
               </button>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
 
           <!-- Search Input -->
@@ -320,6 +333,20 @@ const StudentManagement = {
   async deleteStudent(studentId) {
     if (!confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi hệ thống?')) return;
     await DB.deleteStudent(studentId);
+    if (window.AdminDashboard && window.AdminDashboard.currentTab === 'students') {
+      window.AdminDashboard.switchTab('students');
+    } else {
+      window.App.renderApp();
+    }
+  },
+
+  async cleanDuplicates() {
+    const res = await DB.cleanDuplicateStudents();
+    if (res.removedCount > 0) {
+      alert(`Đã lọc bỏ thành công ${res.removedCount} bản ghi học sinh trùng lặp!\nHiện tại danh sách còn đúng ${res.remainingCount} học sinh chuẩn.`);
+    } else {
+      alert(`Danh sách học sinh hoàn toàn chuẩn xác, không có bản ghi nào bị trùng lặp (Tổng cộng: ${res.remainingCount} học sinh).`);
+    }
     if (window.AdminDashboard && window.AdminDashboard.currentTab === 'students') {
       window.AdminDashboard.switchTab('students');
     } else {
