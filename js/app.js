@@ -640,6 +640,29 @@ const App = {
       }
     }
 
+    // 4. Chặn làm lại nếu đã dùng hết số lần cho phép (allowRetake)
+    if (this.currentUser && this.currentUser.role === 'student') {
+      const maxAttempts = (exam.allowRetake !== undefined && exam.allowRetake !== null)
+        ? Number(exam.allowRetake)
+        : (exam.maxAttempts ? Number(exam.maxAttempts) : 1);
+
+      if (maxAttempts > 0) {
+        const allSubs = await DB.getSubmissions(examId);
+        const stId = this.currentUser.id;
+        const stUser = (this.currentUser.username || '').toLowerCase();
+        const mySubs = allSubs.filter(s =>
+          s.studentId === stId ||
+          (stUser && s.studentUsername && s.studentUsername.toLowerCase() === stUser)
+        );
+
+        if (mySubs.length >= maxAttempts) {
+          alert(`⛔ BẠN ĐÃ HẾT SỐ LẦN LÀM BÀI!\n\nGiáo viên quy định đề thi này chỉ được làm tối đa ${maxAttempts} lần.\nEm đã hoàn thành ${mySubs.length}/${maxAttempts} lần nộp bài.\n\nEm có thể xem lại kết quả và lời giải chi tiết của bài làm trước nhé!`);
+          this.navigateTo('student-dashboard');
+          return;
+        }
+      }
+    }
+
     this.currentView = 'exam-taking';
     this.viewParam = examId;
     await ExamTaking.init(examId, this.currentUser);

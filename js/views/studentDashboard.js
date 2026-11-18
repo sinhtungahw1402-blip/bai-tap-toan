@@ -14,11 +14,26 @@ const StudentDashboard = {
 
     const submissions = await DB.getSubmissions(null, student.id);
     const subMap = {};
+    const attemptsMap = {};
     submissions.forEach(s => {
+      attemptsMap[s.examId] = (attemptsMap[s.examId] || 0) + 1;
       if (!subMap[s.examId] || new Date(s.submittedAt) > new Date(subMap[s.examId].submittedAt)) {
         subMap[s.examId] = s;
       }
     });
+
+    const stUser = (student.username || '').toLowerCase();
+    if (stUser) {
+      const allSubs = await DB.getSubmissions();
+      allSubs.forEach(s => {
+        if (s.studentUsername && s.studentUsername.toLowerCase() === stUser && s.studentId !== student.id) {
+          attemptsMap[s.examId] = (attemptsMap[s.examId] || 0) + 1;
+          if (!subMap[s.examId] || new Date(s.submittedAt) > new Date(subMap[s.examId].submittedAt)) {
+            subMap[s.examId] = s;
+          }
+        }
+      });
+    }
 
     const now = new Date();
 
@@ -32,27 +47,28 @@ const StudentDashboard = {
       const openDate = exam.openTime ? new Date(exam.openTime) : null;
       const dueDate = exam.dueTime ? new Date(exam.dueTime) : null;
       const hasSub = subMap[exam.id];
+      const attemptCount = attemptsMap[exam.id] || (hasSub ? 1 : 0);
 
       // Đã nộp
       if (hasSub) {
-        completedExams.push({ exam, submission: hasSub });
+        completedExams.push({ exam, submission: hasSub, attemptCount });
       }
 
       const isExpired = dueDate && now > dueDate;
       const isNotYetOpen = openDate && now < openDate;
 
       if (isExpired) {
-        if (!hasSub) expiredExams.push({ exam });
+        if (!hasSub) expiredExams.push({ exam, attemptCount: 0 });
       } else if (!isNotYetOpen) {
         // Đang mở
         const hoursLeft = dueDate ? (dueDate - now) / (1000 * 60 * 60) : 999;
         if (hoursLeft <= 24 && hoursLeft > 0) {
-          dueSoonExams.push({ exam, submission: hasSub, hoursLeft: Math.round(hoursLeft) });
+          dueSoonExams.push({ exam, submission: hasSub, hoursLeft: Math.round(hoursLeft), attemptCount });
         }
-        activeExams.push({ exam, submission: hasSub, isNotYetOpen: false });
+        activeExams.push({ exam, submission: hasSub, isNotYetOpen: false, attemptCount });
       } else {
         // Chưa đến giờ mở: hiển thị trong tab Đang mở nhưng khóa nút và ghi rõ thời điểm bắt đầu
-        activeExams.push({ exam, submission: hasSub, isNotYetOpen: true });
+        activeExams.push({ exam, submission: hasSub, isNotYetOpen: true, attemptCount });
       }
     });
 
@@ -153,7 +169,7 @@ const StudentDashboard = {
         return this._renderEmptyState('Hiện tại không có bài kiểm tra nào đang mở.');
       }
       return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        ${data.activeExams.map(item => this._renderExamCard(item.exam, item.submission, 'active')).join('')}
+        ${data.activeExams.map(item => this._renderExamCard(item.exam, item.submission, 'active', null, item.attemptCount)).join('')}
       </div>`;
     }
 
@@ -162,7 +178,7 @@ const StudentDashboard = {
         return this._renderEmptyState('Không có bài kiểm tra nào sắp hết hạn trong 24 giờ tới.');
       }
       return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        ${data.dueSoonExams.map(item => this._renderExamCard(item.exam, item.submission, 'due_soon', item.hoursLeft)).join('')}
+        ${data.dueSoonExams.map(item => this._renderExamCard(item.exam, item.submission, 'due_soon', item.hoursLeft, item.attemptCount)).join('')}
       </div>`;
     }
 
@@ -171,7 +187,7 @@ const StudentDashboard = {
         return this._renderEmptyState('Em chưa hoàn thành bài kiểm tra nào.');
       }
       return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        ${data.completedExams.map(item => this._renderExamCard(item.exam, item.submission, 'completed')).join('')}
+        ${data.completedExams.map(item => this._renderExamCard(item.exam, item.submission, 'completed', null, item.attemptCount)).join('')}
       </div>`;
     }
 
@@ -180,7 +196,7 @@ const StudentDashboard = {
         return this._renderEmptyState('Tuyệt vời! Em không bỏ lỡ bài kiểm tra nào.');
       }
       return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        ${data.expiredExams.map(item => this._renderExamCard(item.exam, null, 'expired')).join('')}
+        ${data.expiredExams.map(item => this._renderExamCard(item.exam, null, 'expired', null, 0)).join('')}
       </div>`;
     }
 
@@ -189,11 +205,16 @@ const StudentDashboard = {
     }
   },
 
-  _renderExamCard(exam, submission, status, hoursLeft) {
+  _renderExamCard(exam, submission, status, hoursLeft, attemptCount = 0) {
     const qCount = exam.questions ? exam.questions.length : 0;
     const p1Count = (exam.questions || []).filter(q => q.part === 1).length;
     const p2Count = (exam.questions || []).filter(q => q.part === 2).length;
     const p3Count = (exam.questions || []).filter(q => q.part === 3).length;
+
+    const maxAttempts = (exam.allowRetake !== undefined && exam.allowRetake !== null)
+      ? Number(exam.allowRetake)
+      : (exam.maxAttempts ? Number(exam.maxAttempts) : 1);
+    const canRetake = (maxAttempts === -1) || (attemptCount < maxAttempts);
 
     const now = new Date();
     const openDate = exam.openTime ? new Date(exam.openTime) : null;
@@ -283,14 +304,23 @@ const StudentDashboard = {
                 >
                   🔒 Chưa mở
                 </button>
-              ` : `
+              ` : (canRetake ? `
                 <button
                   onclick="window.App.startExam('${exam.id}')"
                   class="w-full py-2.5 px-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition text-center"
                 >
-                  Làm lại bài
+                  Làm lại bài (${attemptCount}/${maxAttempts === -1 ? '∞' : maxAttempts})
                 </button>
-              `}
+              ` : `
+                <button
+                  type="button"
+                  disabled
+                  class="w-full py-2.5 px-2 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-400 dark:text-slate-400 font-bold text-xs cursor-not-allowed border border-slate-200 dark:border-slate-700 text-center"
+                  title="Em đã hoàn thành đủ số lần làm bài quy định (${attemptCount}/${maxAttempts} lần)"
+                >
+                  ✓ Đã thi (${attemptCount}/${maxAttempts} lần)
+                </button>
+              `)}
             </div>
           ` : (isNotYetOpen ? `
             <button

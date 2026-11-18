@@ -1,5 +1,5 @@
 // Azota Toán - KaTeX Math Renderer & Math Equation Helper
-// Hỗ trợ hiển thị đầy đủ và chuẩn xác các công thức toán học GDPT 2018 (Véc-tơ, Mũi tên, Góc, Hệ PT, Tích phân,...)
+// Hỗ trợ hiển thị đầy đủ và chuẩn xác các công thức toán học GDPT 2018 (Véc-tơ, Mũi tên, Góc, Hệ PT, Tích phân, Căn bậc hai,...)
 
 const KATEX_MACROS = {
   // Mở rộng dấu mũi tên véc-tơ co dãn chuẩn SGK Việt Nam bao phủ toàn bộ chữ cái (CB, CD, AB, MN, u, v,...)
@@ -35,65 +35,59 @@ const MathRenderer = {
     }
 
     let text = String(rawText);
+    const mathTokens = [];
 
-    // 1. Xử lý Display Math dạng $$...$$
+    // Helper lưu công thức đã render vào mảng và trả về placeholder an toàn
+    const stashMath = (formula, isDisplay) => {
+      const token = `@@@AZOTA_MATH_TOKEN_${mathTokens.length}@@@`;
+      try {
+        const cleanFormula = this.preprocessLatex(formula);
+        let rendered = katex.renderToString(cleanFormula, {
+          displayMode: isDisplay,
+          throwOnError: false,
+          macros: this.MACROS
+        });
+        // Bảo vệ triệt để: loại bỏ bất kỳ thẻ <br> nào nếu lọt vào bên trong SVG path
+        rendered = rendered.replace(/(<svg[\s\S]*?<\/svg>)/g, (svgBlock) => {
+          return svgBlock.replace(/<br\s*\/?>/gi, '\n');
+        });
+        mathTokens.push(rendered);
+      } catch (err) {
+        mathTokens.push(`<span class="text-red-500 font-mono">[Lỗi công thức: ${formula}]</span>`);
+      }
+      return token;
+    };
+
+    // 1. Trích xuất Display Math dạng $$...$$
     text = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
-      try {
-        const cleanFormula = this.preprocessLatex(formula);
-        return katex.renderToString(cleanFormula, {
-          displayMode: true,
-          throwOnError: false,
-          macros: this.MACROS
-        });
-      } catch (err) {
-        return `<span class="text-red-500 font-mono">[Lỗi công thức: ${formula}]</span>`;
-      }
+      return stashMath(formula, true);
     });
 
-    // 2. Xử lý Display Math dạng \[...\]
+    // 2. Trích xuất Display Math dạng \[...\]
     text = text.replace(/\\\[([\s\S]+?)\\\]/g, (match, formula) => {
-      try {
-        const cleanFormula = this.preprocessLatex(formula);
-        return katex.renderToString(cleanFormula, {
-          displayMode: true,
-          throwOnError: false,
-          macros: this.MACROS
-        });
-      } catch (err) {
-        return `<span class="text-red-500 font-mono">[Lỗi công thức: ${formula}]</span>`;
-      }
+      return stashMath(formula, true);
     });
 
-    // 3. Xử lý Inline Math dạng $...$ (không trùng dấu $ của giá tiền hay ký tự escape)
+    // 3. Trích xuất Inline Math dạng $...$ (không trùng dấu $ của giá tiền hay ký tự escape)
     text = text.replace(/(?<!\\)\$([^\$\n]+?)(?<!\\)\$/g, (match, formula) => {
-      try {
-        const cleanFormula = this.preprocessLatex(formula);
-        return katex.renderToString(cleanFormula, {
-          displayMode: false,
-          throwOnError: false,
-          macros: this.MACROS
-        });
-      } catch (err) {
-        return `<span class="text-red-500 font-mono">[Lỗi: ${formula}]</span>`;
-      }
+      return stashMath(formula, false);
     });
 
-    // 4. Xử lý Inline Math dạng \(...\)
+    // 4. Trích xuất Inline Math dạng \(...\)
     text = text.replace(/\\\(([\s\S]+?)\\\)/g, (match, formula) => {
-      try {
-        const cleanFormula = this.preprocessLatex(formula);
-        return katex.renderToString(cleanFormula, {
-          displayMode: false,
-          throwOnError: false,
-          macros: this.MACROS
-        });
-      } catch (err) {
-        return `<span class="text-red-500 font-mono">[Lỗi: ${formula}]</span>`;
-      }
+      return stashMath(formula, false);
     });
 
-    // Chuyển dấu xuống dòng \n thành <br> nếu không nằm trong thẻ html
-    return text.replace(/\n/g, '<br/>');
+    // 5. Chuyển đổi dấu xuống dòng \n thành <br/> CHỈ trong phần văn bản thuần (không làm hỏng thẻ SVG của KaTeX)
+    text = text.replace(/\n/g, '<br/>');
+
+    // 6. Gắn lại mã HTML công thức KaTeX hoàn chỉnh vào đúng vị trí ban đầu
+    mathTokens.forEach((renderedHtml, idx) => {
+      const token = `@@@AZOTA_MATH_TOKEN_${idx}@@@`;
+      text = text.replace(token, renderedHtml);
+    });
+
+    return text;
   },
 
   // Render toán học trực tiếp vào một DOM element

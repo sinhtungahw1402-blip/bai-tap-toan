@@ -457,8 +457,18 @@ const ExcelHelper = {
   exportScoreboard(examTitle, students, submissions) {
     if (typeof XLSX === 'undefined') return;
 
-    const subMap = {};
-    submissions.forEach(sub => { subMap[sub.studentId] = sub; });
+    const norm = (s) => String(s || '').trim().toUpperCase();
+    const findSubForStudent = (st) => {
+      let match = submissions.find(s => s.studentId === st.id);
+      if (match) return match;
+      if (st.username) {
+        const u = st.username.toLowerCase();
+        match = submissions.find(s => s.studentUsername && s.studentUsername.toLowerCase() === u);
+        if (match) return match;
+      }
+      match = submissions.find(s => norm(s.studentName) === norm(st.name));
+      return match;
+    };
 
     const headers = [
       'STT',
@@ -473,7 +483,7 @@ const ExcelHelper = {
     ];
 
     const dataRows = students.map((st, idx) => {
-      const sub = subMap[st.id];
+      const sub = findSubForStudent(st);
       const hasSubmitted = Boolean(sub);
 
       let durationText = '--';

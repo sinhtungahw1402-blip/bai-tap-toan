@@ -18,7 +18,7 @@ const Analytics = {
       return `<div class="p-8 text-center text-slate-500">Chưa có đề thi nào để thống kê.</div>`;
     }
 
-    const submissions = (presetSubmissions ? presetSubmissions.filter(s => s.examId === currentExam.id) : null) || await DB.getSubmissions(currentExam.id);
+    const submissions = (presetSubmissions ? presetSubmissions.filter(s => s.examId === currentExam.id) : null) || await DB.getSubmissions(currentExam.id, null, true);
     const assignedClasses = currentExam.assignedClasses || [];
     
     // Danh sách học sinh thuộc diện thi đề này (chuẩn hóa tên lớp)
@@ -28,10 +28,57 @@ const Analytics = {
       ? students.filter(s => assignedNorms.includes(norm(s.class)))
       : students;
 
-    const subMap = {};
-    submissions.forEach(s => { subMap[s.studentId] = s; });
+    // Tìm kiếm học sinh tương ứng với bài nộp (Đa tầng: theo ID, Username, Tên + Lớp)
+    const findStudentForSubmission = (sub) => {
+      let match = students.find(st => st.id === sub.studentId);
+      if (match) return match;
+      if (sub.studentUsername) {
+        const u = sub.studentUsername.toLowerCase();
+        match = students.find(st => st.username && st.username.toLowerCase() === u);
+        if (match) return match;
+      }
+      const nName = norm(sub.studentName);
+      const nClass = norm(sub.studentClass);
+      match = students.find(st => norm(st.name) === nName && (!nClass || norm(st.class) === nClass));
+      if (match) return match;
+      match = students.find(st => norm(st.name) === nName);
+      return match;
+    };
 
-    const submittedStudents = targetStudents.filter(s => Boolean(subMap[s.id]));
+    const subMap = {};
+    const extraStudents = [];
+
+    submissions.forEach(s => {
+      let st = findStudentForSubmission(s);
+      if (!st) {
+        st = {
+          id: s.studentId || `hs_auto_${s.id}`,
+          name: s.studentName || 'Học sinh',
+          class: s.studentClass || 'Tự do',
+          username: s.studentUsername || ''
+        };
+        extraStudents.push(st);
+      }
+      // Lưu lại bài nộp có điểm cao nhất của học sinh này
+      if (!subMap[st.id] || s.score > subMap[st.id].score) {
+        subMap[st.id] = s;
+      }
+    });
+
+    // Kết hợp targetStudents với bất kỳ học sinh nào đã nộp bài cho đề này để không bao giờ bị sót kết quả
+    const combinedStudents = [...targetStudents];
+    extraStudents.forEach(ext => {
+      if (!combinedStudents.some(cs => cs.id === ext.id)) {
+        combinedStudents.push(ext);
+      }
+    });
+    students.forEach(st => {
+      if (subMap[st.id] && !combinedStudents.some(cs => cs.id === st.id)) {
+        combinedStudents.push(st);
+      }
+    });
+
+    const submittedStudents = combinedStudents.filter(s => Boolean(subMap[s.id]));
     const unsubmittedStudents = targetStudents.filter(s => !subMap[s.id]);
 
     // Tính toán KPI
@@ -57,7 +104,7 @@ const Analytics = {
     // Lưu cache dữ liệu để xuất Excel và sao chép an toàn
     this.cachedData = {
       currentExam,
-      targetStudents,
+      targetStudents: combinedStudents,
       submissions,
       unsubmittedStudents
     };

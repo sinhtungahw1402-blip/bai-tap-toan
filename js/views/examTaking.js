@@ -16,8 +16,35 @@ const ExamTaking = {
   lastLeftTime: null,
   currentLeaveReason: '',
   hasRequestedFullscreen: false,
+  isFullscreen: false,
+  _isExplicitlyTogglingFullscreen: false,
+  wakeLock: null,
   initialWidth: 0,
   initialHeight: 0,
+
+  // Yêu cầu giữ sáng màn hình điện thoại (Screen Wake Lock API)
+  async _requestWakeLock() {
+    try {
+      if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+        console.log('[AntiCheat] Screen Wake Lock đã kích hoạt - Giữ màn hình điện thoại luôn sáng khi làm bài.');
+        this.wakeLock.addEventListener('release', () => {
+          this.wakeLock = null;
+        });
+      }
+    } catch (e) {
+      console.warn('[AntiCheat] Không thể yêu cầu WakeLock:', e);
+    }
+  },
+
+  _releaseWakeLock() {
+    try {
+      if (this.wakeLock) {
+        this.wakeLock.release().catch(() => {});
+        this.wakeLock = null;
+      }
+    } catch (e) {}
+  },
 
   // Khởi động phòng thi
   async init(examId, student) {
@@ -31,6 +58,32 @@ const ExamTaking = {
       window.App.navigateTo('student-dashboard');
       return;
     }
+
+    // Kiểm tra số lần làm bài cho phép (allowRetake / maxAttempts)
+    if (this.student && this.student.role === 'student') {
+      const maxAttempts = (this.exam.allowRetake !== undefined && this.exam.allowRetake !== null)
+        ? Number(this.exam.allowRetake)
+        : (this.exam.maxAttempts ? Number(this.exam.maxAttempts) : 1);
+
+      if (maxAttempts > 0) {
+        const allSubs = await DB.getSubmissions(this.exam.id);
+        const stId = this.student.id;
+        const stUser = (this.student.username || '').toLowerCase();
+        const mySubs = allSubs.filter(s =>
+          s.studentId === stId ||
+          (stUser && s.studentUsername && s.studentUsername.toLowerCase() === stUser)
+        );
+
+        if (mySubs.length >= maxAttempts) {
+          alert(`⛔ BẠN ĐÃ DÙNG HẾT SỐ LẦN LÀM BÀI!\n\nGiáo viên quy định đề thi này chỉ được làm tối đa ${maxAttempts} lần.\nEm đã hoàn thành ${mySubs.length}/${maxAttempts} lần nộp bài.\n\nEm hãy xem lại kết quả và lời giải chi tiết nhé!`);
+          window.App.navigateTo('student-dashboard');
+          return;
+        }
+      }
+    }
+
+    // Kích hoạt giữ sáng màn hình điện thoại
+    this._requestWakeLock();
 
     // Phân quyền lớp học sinh nghiêm ngặt: Học sinh lớp này không thể làm bài của lớp khác
     if (this.student && this.student.class && this.exam.assignedClasses && this.exam.assignedClasses.length > 0) {
@@ -262,6 +315,11 @@ const ExamTaking = {
   },
 
   _cleanupAntiCheat() {
+    this._releaseWakeLock();
+    if (typeof document !== 'undefined') {
+      const rootContainer = document.getElementById('examTakingRoot');
+      if (rootContainer) rootContainer.classList.remove('exam-pseudo-fullscreen');
+    }
     if (typeof document !== 'undefined' && document.body) {
       document.body.classList.remove('in-exam');
     }
@@ -378,6 +436,13 @@ const ExamTaking = {
     const awayMs = Date.now() - (this.lastLeftTime || Date.now());
     const awaySec = Math.max(1, Math.round(awayMs / 1000));
     const reason = this.currentLeaveReason || 'Rời màn hình thi';
+
+    // Bỏ qua cảnh báo gian lận nếu thời gian ngắn <= 3 giây (màn hình vừa tắt/bật lại ngay hoặc chạm nhầm)
+    if (awaySec <= 3) {
+      console.log(`[AntiCheat] Bỏ qua cảnh báo: học sinh quay lại tức thì trong ${awaySec}s.`);
+      return;
+    }
+
     this._recordCheatIncident(`${reason} (Vắng mặt ${awaySec} giây)`);
   },
 
@@ -385,6 +450,10 @@ const ExamTaking = {
     if (document.hidden) {
       this._triggerLeave('Chuyển sang ứng dụng hoặc tab khác');
     } else {
+      // Tự động khôi phục Screen Wake Lock giữ sáng màn hình
+      if (!this.wakeLock && !this.isSubmitting) {
+        this._requestWakeLock();
+      }
       this._triggerReturn();
     }
   },
@@ -406,15 +475,25 @@ const ExamTaking = {
     this._triggerReturn();
   },
 
-  _handleFullscreenChange() {
-    if (typeof document === 'undefined') return;
-    const isFS = Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+  _updateFullscreenBtnUI(isFS) {
     const fsBtn = document.getElementById('examFullscreenToggleBtn');
     if (fsBtn) {
       fsBtn.innerHTML = isFS
         ? '<span>🗗</span> <span class="hidden sm:inline">Thu nhỏ</span>'
         : '<span>⛶</span> <span class="hidden sm:inline">Toàn màn hình</span>';
+      fsBtn.title = isFS ? 'Thu nhỏ chế độ xem' : 'Bật toàn màn hình';
     }
+  },
+
+  _handleFullscreenChange() {
+    if (typeof document === 'undefined') return;
+    const isFS = Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    this.isFullscreen = isFS;
+    this._updateFullscreenBtnUI(isFS);
+
+    // Không kích hoạt cảnh báo nếu học sinh chủ động bấm nút "Thu nhỏ"
+    if (this._isExplicitlyTogglingFullscreen) return;
+
     if (!isFS && this.hasRequestedFullscreen && !this.isSubmitting) {
       this._recordCheatIncident('Thoát khỏi chế độ Toàn Màn Hình');
     }
@@ -431,17 +510,49 @@ const ExamTaking = {
   toggleFullscreen() {
     if (typeof document === 'undefined') return;
     const docEl = document.documentElement;
-    const isFS = Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
-    if (!isFS) {
+    const isFS = Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    const rootContainer = document.getElementById('examTakingRoot');
+
+    this._isExplicitlyTogglingFullscreen = true;
+
+    if (!isFS && !this.isFullscreen) {
+      // Bật chế độ toàn màn hình
       this.hasRequestedFullscreen = true;
-      if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
-      else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen().catch(() => {});
-      else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen().catch(() => {});
-      else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
+      this.isFullscreen = true;
+
+      let p = null;
+      if (docEl.requestFullscreen) p = docEl.requestFullscreen();
+      else if (docEl.webkitRequestFullscreen) p = docEl.webkitRequestFullscreen();
+      else if (docEl.mozRequestFullScreen) p = docEl.mozRequestFullScreen();
+      else if (docEl.msRequestFullscreen) p = docEl.msRequestFullscreen();
+
+      if (p && p.catch) {
+        p.catch(() => {
+          // Fallback CSS pseudo-fullscreen nếu thiết bị/trình duyệt không cho phép Fullscreen API (ví dụ iPhone/iOS Safari)
+          if (rootContainer) rootContainer.classList.add('exam-pseudo-fullscreen');
+        });
+      } else if (!p && !document.fullscreenElement) {
+        if (rootContainer) rootContainer.classList.add('exam-pseudo-fullscreen');
+      }
+
+      this._updateFullscreenBtnUI(true);
     } else {
+      // Thoát / Thu nhỏ lại chế độ bình thường
+      this.hasRequestedFullscreen = false;
+      this.isFullscreen = false;
+      if (rootContainer) rootContainer.classList.remove('exam-pseudo-fullscreen');
+
       if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen().catch(() => {});
+      else if (document.mozCancelFullScreen) document.mozCancelFullScreen().catch(() => {});
+      else if (document.msExitFullscreen) document.msExitFullscreen().catch(() => {});
+
+      this._updateFullscreenBtnUI(false);
     }
+
+    setTimeout(() => {
+      this._isExplicitlyTogglingFullscreen = false;
+    }, 800);
   },
 
   _playWarningBeep() {
@@ -597,55 +708,57 @@ const ExamTaking = {
     const timeFormatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 
     return `
-      <div class="anti-cheat-protected min-h-[calc(100vh-4rem)] flex flex-col bg-slate-50 dark:bg-slate-950">
+      <div id="examTakingRoot" class="anti-cheat-protected min-h-[calc(100vh-4rem)] flex flex-col bg-slate-50 dark:bg-slate-950">
         
         <!-- Top Sticky Header -->
-        <div class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-sm safe-area-header">
-          <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-2 sm:px-4 py-2 sm:py-2.5 shadow-sm safe-area-header">
+          <div class="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
             
-            <!-- Left Info -->
-            <div class="flex items-center space-x-3">
-              <span class="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-md">
+            <!-- Left Info (Tự co giãn, không đẩy lệch nút góc phải) -->
+            <div class="flex items-center space-x-1.5 sm:space-x-3 min-w-0 flex-1">
+              <span class="font-extrabold text-xs sm:text-base text-slate-900 dark:text-white truncate max-w-[110px] xs:max-w-[140px] sm:max-w-xs md:max-w-md">
                 ${this.exam.title}
               </span>
-              <span class="hidden md:inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+              <span class="hidden md:inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 shrink-0">
                 Lớp: ${this.student.class}
               </span>
             </div>
 
             <!-- Middle Countdown Timer -->
-            <div class="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-              <span class="text-xs">⏱️</span>
-              <span id="examCountdownTimer" class="text-base font-black text-blue-600 dark:text-blue-400">
+            <div class="flex items-center space-x-1 sm:space-x-2 bg-slate-100 dark:bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
+              <span class="text-[11px] sm:text-xs">⏱️</span>
+              <span id="examCountdownTimer" class="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 tracking-tight">
                 ${timeFormatted}
               </span>
             </div>
 
-            <!-- Right Buttons -->
-            <div class="flex items-center space-x-2">
+            <!-- Right Controls (shrink-0, luôn hiển thị đầy đủ ở góc trên bên phải mọi điện thoại) -->
+            <div class="flex items-center space-x-1 sm:space-x-2 shrink-0">
               <button
                 id="examFullscreenToggleBtn"
                 type="button"
                 onclick="window.ExamTaking.toggleFullscreen()"
-                class="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center space-x-1 transition shadow-sm"
+                class="p-1.5 sm:px-2.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center space-x-1 transition shadow-sm shrink-0"
                 title="Bật/Tắt Toàn Màn Hình"
               >
-                <span>⛶</span>
-                <span class="hidden sm:inline">Toàn màn hình</span>
+                <span>${this.isFullscreen ? '🗗' : '⛶'}</span>
+                <span class="hidden sm:inline">${this.isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
               </button>
 
               <button
                 id="examAnsweredCountHeader"
+                type="button"
                 onclick="window.ExamTaking.openPaletteModal()"
-                class="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs"
-                title="Bảng câu hỏi"
+                class="p-1.5 sm:px-2.5 sm:py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 font-bold text-[11px] sm:text-xs border border-blue-200 dark:border-blue-800 shrink-0 whitespace-nowrap shadow-sm"
+                title="Bảng câu hỏi đã làm và chưa làm"
               >
                 📋 ${answeredCount}/${totalQ}
               </button>
 
               <button
+                type="button"
                 onclick="window.ExamTaking.promptSubmit()"
-                class="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition"
+                class="py-1.5 px-2.5 sm:py-2 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition shrink-0 whitespace-nowrap"
               >
                 Nộp Bài
               </button>
@@ -766,42 +879,54 @@ const ExamTaking = {
       <!-- Submit Confirmation Modal -->
       <div id="submitConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-bounce-once">
-          <div class="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3 text-2xl">
-            📋
-          </div>
-          <h3 class="text-lg font-black text-slate-900 dark:text-white">Xác Nhận Nộp Bài?</h3>
           
-          <div class="my-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs space-y-1">
-            <div class="flex justify-between text-slate-600 dark:text-slate-300">
-              <span>Đã trả lời:</span>
-              <strong class="text-emerald-600 dark:text-emerald-400 font-bold">${answeredCount} / ${totalQ} câu</strong>
+          <div id="submitModalBody">
+            <div class="w-14 h-14 rounded-2xl ${totalQ - answeredCount === 0 ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400'} flex items-center justify-center mx-auto mb-3 text-2xl">
+              ${totalQ - answeredCount === 0 ? '🎉' : '📋'}
             </div>
-            ${totalQ - answeredCount > 0 ? `
-              <div class="flex justify-between text-amber-600 font-bold">
-                <span>Còn chưa làm:</span>
-                <span>${totalQ - answeredCount} câu</span>
+            <h3 class="text-lg font-black text-slate-900 dark:text-white">
+              ${totalQ - answeredCount === 0 ? 'Xác Nhận Nộp Bài Thi?' : 'Vẫn Còn Câu Chưa Làm Xong!'}
+            </h3>
+            
+            <div class="my-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs space-y-1.5 text-left">
+              <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                <span>Tiến độ bài làm:</span>
+                <strong class="text-emerald-600 dark:text-emerald-400 font-bold">${answeredCount} / ${totalQ} câu</strong>
               </div>
-            ` : ''}
+              ${totalQ - answeredCount > 0 ? `
+                <div class="flex justify-between items-center text-amber-600 font-bold">
+                  <span>Số câu chưa làm:</span>
+                  <span class="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300">${totalQ - answeredCount} câu</span>
+                </div>
+              ` : `
+                <div class="flex justify-between items-center text-emerald-600 font-bold">
+                  <span>Trạng thái:</span>
+                  <span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">✓ Đã làm đủ 100%</span>
+                </div>
+              `}
+            </div>
+
+            ${totalQ - answeredCount > 0 ? `
+              <p class="text-xs text-amber-600 dark:text-amber-400 font-medium mb-4 leading-relaxed">
+                ⚠️ Em vẫn còn <strong>${totalQ - answeredCount} câu</strong> chưa hoàn thành đầy đủ. Em có chắc chắn muốn nộp bài thi ngay bây giờ không?
+              </p>
+            ` : `
+              <p class="text-xs text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+                Tuyệt vời! Em đã hoàn thành tất cả <strong>${totalQ} / ${totalQ} câu hỏi</strong>. Hãy kiểm tra lại thật kỹ trước khi gửi bài nhé!
+              </p>
+            `}
           </div>
 
-          ${totalQ - answeredCount > 0 ? `
-            <p class="text-xs text-amber-600 font-medium mb-4">
-              ⚠️ Em vẫn còn câu chưa hoàn thành. Em có chắc chắn muốn nộp bài bây giờ không?
-            </p>
-          ` : `
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Em đã hoàn thành tất cả các câu. Hãy chắc chắn trước khi gửi nhé!
-            </p>
-          `}
-
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-2 gap-2 mt-4">
             <button
+              type="button"
               onclick="document.getElementById('submitConfirmModal').classList.add('hidden')"
               class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition"
             >
               Làm tiếp
             </button>
             <button
+              type="button"
               onclick="window.ExamTaking.submitExam(false)"
               class="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition"
             >
@@ -974,13 +1099,46 @@ const ExamTaking = {
     `;
   },
 
+  _isQuestionAnswered(q) {
+    const a = this.answers[q.id];
+    if (a === undefined || a === null) return false;
+    if (q.part === 1) {
+      return String(a).trim() !== '';
+    }
+    if (q.part === 2) {
+      if (typeof a !== 'object') return false;
+      const subKeys = (q.options && q.options.length > 0) ? q.options.map(o => o.id) : ['a', 'b', 'c', 'd'];
+      return subKeys.every(k => a[k] === true || a[k] === false);
+    }
+    if (q.part === 3) {
+      return String(a).trim() !== ''; // Chuẩn hóa xử lý số 0, số âm, số thập phân
+    }
+    return false;
+  },
+
   _getQuestionState(q) {
     if (this.flaggedQuestions[q.id]) return 'flagged';
-    const a = this.answers[q.id];
-    if (q.part === 1 && a) return 'answered';
-    if (q.part === 2 && a && Object.keys(a).length > 0) return 'answered';
-    if (q.part === 3 && a && String(a).trim() !== '') return 'answered';
+    if (this._isQuestionAnswered(q)) return 'answered';
+    if (q.part === 2) {
+      const a = this.answers[q.id];
+      if (a && typeof a === 'object' && Object.values(a).some(v => v === true || v === false)) {
+        return 'partial';
+      }
+    }
     return 'unanswered';
+  },
+
+  _getAnsweredStats() {
+    const total = this.shuffledQuestions.length;
+    let answered = 0;
+    this.shuffledQuestions.forEach(q => {
+      if (this._isQuestionAnswered(q)) answered++;
+    });
+    return {
+      total,
+      answered,
+      unanswered: Math.max(0, total - answered)
+    };
   },
 
   _renderQuestionAnswers(q) {
@@ -1112,14 +1270,9 @@ const ExamTaking = {
 
   // Cập nhật trạng thái hiển thị của toàn bộ Bảng Palette (0ms)
   _updatePaletteUI() {
-    const totalQ = this.shuffledQuestions.length;
-    let answeredCount = 0;
-    this.shuffledQuestions.forEach(q => {
-      const a = this.answers[q.id];
-      if (q.part === 1 && a) answeredCount++;
-      else if (q.part === 2 && a && Object.keys(a).length > 0) answeredCount++;
-      else if (q.part === 3 && a && String(a).trim() !== '') answeredCount++;
-    });
+    const stats = this._getAnsweredStats();
+    const totalQ = stats.total;
+    const answeredCount = stats.answered;
 
     // Cập nhật nút đếm trên Header Mobile
     const headerCounter = document.getElementById('examAnsweredCountHeader');
@@ -1303,7 +1456,55 @@ const ExamTaking = {
     document.getElementById('paletteMobileModal')?.classList.remove('hidden');
   },
 
+  _updateSubmitModalUI() {
+    const modal = document.getElementById('submitConfirmModal');
+    if (!modal) return;
+    const stats = this._getAnsweredStats();
+    const isAllDone = stats.unanswered === 0;
+
+    const modalBody = modal.querySelector('#submitModalBody');
+    if (modalBody) {
+      modalBody.innerHTML = `
+        <div class="w-14 h-14 rounded-2xl ${isAllDone ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400'} flex items-center justify-center mx-auto mb-3 text-2xl">
+          ${isAllDone ? '🎉' : '📋'}
+        </div>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white">
+          ${isAllDone ? 'Xác Nhận Nộp Bài Thi?' : 'Vẫn Còn Câu Chưa Làm Xong!'}
+        </h3>
+        
+        <div class="my-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs space-y-1.5 text-left">
+          <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
+            <span>Tiến độ bài làm:</span>
+            <strong class="text-emerald-600 dark:text-emerald-400 font-bold">${stats.answered} / ${stats.total} câu</strong>
+          </div>
+          ${!isAllDone ? `
+            <div class="flex justify-between items-center text-amber-600 font-bold">
+              <span>Số câu chưa hoàn thành:</span>
+              <span class="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300">${stats.unanswered} câu</span>
+            </div>
+          ` : `
+            <div class="flex justify-between items-center text-emerald-600 font-bold">
+              <span>Trạng thái:</span>
+              <span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">✓ Đã làm đủ 100% câu hỏi</span>
+            </div>
+          `}
+        </div>
+
+        ${!isAllDone ? `
+          <p class="text-xs text-amber-600 dark:text-amber-400 font-medium mb-4 leading-relaxed">
+            ⚠️ Em vẫn còn <strong>${stats.unanswered} câu</strong> chưa hoàn thành đầy đủ. Em có chắc chắn muốn nộp bài thi ngay bây giờ không?
+          </p>
+        ` : `
+          <p class="text-xs text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+            Tuyệt vời! Em đã hoàn thành tất cả <strong>${stats.total} / ${stats.total} câu hỏi</strong>. Hãy kiểm tra lại thật kỹ trước khi gửi bài nhé!
+          </p>
+        `}
+      `;
+    }
+  },
+
   promptSubmit() {
+    this._updateSubmitModalUI();
     document.getElementById('submitConfirmModal')?.classList.remove('hidden');
   },
 
@@ -1323,6 +1524,7 @@ const ExamTaking = {
     const submissionPayload = {
       examId: this.exam.id,
       studentId: this.student.id,
+      studentUsername: this.student.username || this.student.id,
       studentName: this.student.name,
       studentClass: this.student.class,
       startedAt: this.startedAt,

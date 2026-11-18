@@ -72,6 +72,8 @@ body {
   .safe-area-header {
     /* calc(max(env, 12px) + 6px): dịch xuống dưới đủ để tránh hoàn toàn tai thỏ và thanh pin/sóng */
     padding-top: calc(max(env(safe-area-inset-top, 0px), 12px) + 6px) !important;
+    padding-right: calc(max(env(safe-area-inset-right, 0px), 12px)) !important;
+    padding-left: calc(max(env(safe-area-inset-left, 0px), 12px)) !important;
   }
 }
 
@@ -91,11 +93,14 @@ body {
   background: #334155;
 }
 
-/* KaTeX Formula Styling & SVG Vector Arrow Compatibility */
+/* KaTeX Formula Styling & SVG Vector Arrow / Radical Compatibility */
 .katex {
   font-size: 1.1em !important;
   text-rendering: auto;
   border-color: currentColor;
+}
+.katex, .katex * {
+  box-sizing: content-box !important;
 }
 .katex-display {
   margin: 0.75em 0 !important;
@@ -113,6 +118,25 @@ body {
   display: block !important;
   fill: currentColor !important;
   stroke: currentColor !important;
+}
+.katex svg path {
+  stroke: none !important;
+}
+
+/* Căn bậc hai (Square Root \sqrt): Đảm bảo dấu căn luôn hiển thị chuẩn xác, không bị ẩn hay mất nét */
+.katex .hide-tail {
+  overflow: hidden !important;
+  position: relative !important;
+  width: 100% !important;
+}
+.katex .hide-tail > svg {
+  position: absolute !important;
+  width: 100% !important;
+  height: inherit !important;
+  max-width: none !important;
+}
+.katex .sqrt {
+  overflow: visible !important;
 }
 
 /* Đảm bảo dấu mũi tên véc-tơ \overrightarrow & \vec luôn hiển thị đầy đủ, không bị ẩn hay cắt đầu */
@@ -135,6 +159,17 @@ body {
 }
 .katex-html, .katex-base {
   overflow: visible !important;
+}
+
+/* Pseudo-Fullscreen for Mobile Devices without Fullscreen API support (iOS Safari) */
+.exam-pseudo-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  background-color: var(--bg-app) !important;
 }
 
 /* Anti-Cheat Protected Screen */
